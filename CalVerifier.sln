@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2027
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CalVerifier", "CalVerifier\CalVerifier.csproj", "{1DD583CC-6A96-4553-B736-200DFD194EB3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1DD583CC-6A96-4553-B736-200DFD194EB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DD583CC-6A96-4553-B736-200DFD194EB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DD583CC-6A96-4553-B736-200DFD194EB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DD583CC-6A96-4553-B736-200DFD194EB3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {31AED61D-AA90-44A8-B03B-93C6CA29C574}
+	EndGlobalSection
+EndGlobal

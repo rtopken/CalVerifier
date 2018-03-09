@@ -1,0 +1,14 @@
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\CalVerifier.exe.config
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\CalVerifier.exe
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\CalVerifier.pdb
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.Auth.dll
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.dll
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Extensions.dll
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.pdb
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.xml
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.Auth.pdb
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.Auth.xml
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csprojResolveAssemblyReference.cache
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csproj.CoreCompileInputs.cache
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.exe
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.pdb
