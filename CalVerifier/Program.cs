@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Exchange.WebServices.Data;
+using Microsoft.Identity.Client;
 using System.IO;
 
 namespace CalVerifier
@@ -12,6 +13,9 @@ namespace CalVerifier
         {
             string strAcct = "";
             string strPwd = "";
+            
+            List<string> strProxyAddresses = new List<string>();
+            
             FindItemsResults<Item> CalItems = null;
 
             if (args.Length > 0)
@@ -31,7 +35,7 @@ namespace CalVerifier
                             {
                                 Console.WriteLine("Could not find the file " + Globals.strListFile + ".");
                                 Utils.ShowHelp();
-                                goto Exit;
+                                return;
                             }
                         }
                     }
@@ -49,18 +53,18 @@ namespace CalVerifier
                     if (args[i].ToUpper() == "-?" || args[i].ToUpper() == "/?") // display command switch help
                     {
                         Utils.ShowHelp();
-                        goto Exit;
+                        return;
                     }
                 }
             }
 
-            ExchangeService service = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
-            service.UseDefaultCredentials = false;
+            Utils.exService = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
+            Utils.exService.UseDefaultCredentials = false;
 
             if (Globals.bVerbose)
             {
-                service.TraceEnabled = true;
-                service.TraceFlags = TraceFlags.All;
+                Utils.exService.TraceEnabled = true;
+                Utils.exService.TraceFlags = TraceFlags.All;
             }
 
             Utils.ShowInfo();
@@ -106,19 +110,32 @@ namespace CalVerifier
 
             Console.WriteLine();
 
-            service.Credentials = new WebCredentials(strAcct, strPwd);
-            service.AutodiscoverUrl(strAcct, RedirectionUrlValidationCallback);
+            Utils.exService.Credentials = new WebCredentials(strAcct, strPwd);
+            Utils.exService.AutodiscoverUrl(strAcct, RedirectionUrlValidationCallback);
+
+            
 
             if (Globals.bListMode) // List mode
             {
                 Globals.rgstrMBX = File.ReadAllLines(Globals.strListFile);
                 foreach (string strSMTP in Globals.rgstrMBX)
                 {
-                    service.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, strSMTP);
-                    CalItems = GetCalItems();
-                    Console.WriteLine(strSMTP);
-                    Console.WriteLine("Found {0} items", CalItems.TotalCount);
-                    Console.WriteLine("");
+                    NameResolutionCollection ncCol = Utils.exService.ResolveName(strSMTP, ResolveNameSearchLocation.DirectoryOnly, true);
+                    Globals.strDisplayName = ncCol[0].Contact.DisplayName;
+                    Console.WriteLine("Processing Calendar for " + Globals.strDisplayName);
+
+                    Utils.exService.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, strSMTP);
+                    CalItems = GetCalItems(Utils.exService);
+                    Globals.strSMTPAddr = strSMTP.ToUpper();
+                    if (CalItems != null)
+                    {
+                        Console.WriteLine("Found {0} items", CalItems.TotalCount);
+                        Console.WriteLine("");
+                    }
+                    else
+                    {
+                        return; // could not connect, error is displayed to user already.
+                    }
 
                     foreach (Appointment appt in CalItems)
                     {
@@ -128,43 +145,58 @@ namespace CalVerifier
             }
             else // single mailbox mode
             {
-                CalItems = GetCalItems();
-                Console.WriteLine(strAcct);
-                Console.WriteLine("Found {0} items", CalItems.TotalCount);
-                Console.WriteLine("");
+                NameResolutionCollection ncCol = Utils.exService.ResolveName(strAcct, ResolveNameSearchLocation.DirectoryOnly, true);
+                Globals.strDisplayName = ncCol[0].Contact.DisplayName;
+                Console.WriteLine("Processing Calendar for " + Globals.strDisplayName);
+
+                Globals.strSMTPAddr = ncCol[0].Mailbox.Address.ToUpper();
+
+                CalItems = GetCalItems(Utils.exService);
+                if (CalItems != null)
+                {
+                    Console.WriteLine("Found {0} items", CalItems.TotalCount);
+                    Console.WriteLine("");
+                }
+                else
+                {
+                    return;  // could not connect, error is displayed to user already.
+                }
 
                 foreach (Appointment appt in CalItems)
                 {
                     Process.ProcessItem(appt);
                 }
             }
+        }
 
-            FindItemsResults<Item> GetCalItems()
+        public static FindItemsResults<Item> GetCalItems(ExchangeService service)
+        {
+            Folder fldCal = null;
+            try
             {
                 // Here's where it will do the connect to the user / Calendar
-                Folder fldCal = Folder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
-
-                // if we're in then we get here
-                // creating a view with props to request / collect
-                ItemView cView = new ItemView(int.MaxValue);
-                List<ExtendedPropertyDefinition> propSet = new List<ExtendedPropertyDefinition>();
-                PropSet.DoProps(ref propSet);
-                cView.PropertySet = new PropertySet(BasePropertySet.FirstClassProperties);
-                foreach (PropertyDefinitionBase pdbProp in propSet)
-                {
-                    cView.PropertySet.Add(pdbProp);
-                }
-
-                // now go get the items
-                FindItemsResults<Item> cAppts = fldCal.FindItems(cView);
-                return cAppts;
+                fldCal = Folder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
+            }
+            catch
+            {
+                Console.WriteLine("Could not connect to this user's mailbox or calendar.");
+                return null;
             }
 
-            Exit:
-            // Exit the app...
-            //Console.Write("\r\nExiting the program.");
-            //Console.ReadLine();
-            return;
+            // if we're in then we get here
+            // creating a view with props to request / collect
+            ItemView cView = new ItemView(int.MaxValue);
+            List<ExtendedPropertyDefinition> propSet = new List<ExtendedPropertyDefinition>();
+            PropSet.DoProps(ref propSet);
+            cView.PropertySet = new PropertySet(BasePropertySet.FirstClassProperties);
+            foreach (PropertyDefinitionBase pdbProp in propSet)
+            {
+                cView.PropertySet.Add(pdbProp);
+            }
+
+            // now go get the items
+            FindItemsResults<Item> cAppts = fldCal.FindItems(cView);
+            return cAppts;
         }
 
         private static bool RedirectionUrlValidationCallback(string redirectionUrl)

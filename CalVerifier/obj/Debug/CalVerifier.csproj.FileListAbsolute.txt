@@ -12,3 +12,4 @@ C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.cspr
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csproj.CoreCompileInputs.cache
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.exe
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.pdb
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Identity.Client.dll

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Microsoft.Exchange.WebServices.Data;
@@ -47,9 +48,150 @@ namespace CalVerifier
         // Test this Calendar Item's properties.
         public static void ProcessItem(Appointment appt)
         {
+            string strLogItem = strSubject + "," + strLocation + "," + strStartWhole + "," + strEndWhole;
+            List<string> strErrors = new List<string>();
+            bool bErr = false;
+            // bool bWarn = false;
+            
             // populate the values for the properties
             GetPropsReadable(appt);
 
+            //get other types of values as needed from the string values
+            DateTime dtStart = DateTime.Parse(strStartWhole);
+            DateTime dtEnd = DateTime.Parse(strEndWhole);
+            NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
+
+
+            // really actually start testing props
+            if (string.IsNullOrEmpty(strDeliveryTime))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Delivery Time property.");
+                Globals.iErrors++;
+            }
+
+            if (string.IsNullOrEmpty(strRecurring))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Recurring property.");
+                Globals.iErrors++;
+            }
+
+            if (string.IsNullOrEmpty(strStartWhole))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Start Time property.");
+                Globals.iErrors++;
+            }
+            else // not empty/missing, but might still have problems
+            {
+                if (dtEnd <= dtStart)
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Start Time is greater than or equal to End Time.");
+                    Globals.iErrors++;
+                }
+
+                if (Utils.TimeCheck(dtStart))  
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Start Time is not set correctly."); 
+                    Globals.iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strEndWhole))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required End Time property.");
+                Globals.iErrors++;
+            }
+            else // not empty/missing, but might still have problems
+            {
+
+                if (Utils.TimeCheck(dtEnd))
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: End Time is not set correctly.");
+                    Globals.iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strOrganizerAddr))
+            {
+                if (int.Parse(strApptStateFlags) > 0) // if no Organizer AND this is a meeting then that's bad.
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Missing required Organizer Address property.");
+                    Globals.iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strApptStateFlags)) //
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Appointment State property.");
+                Globals.iErrors++;
+            }
+            else
+            {
+                // check for meeting hijack items
+                switch (strApptStateFlags)
+                {
+                    case "0": // Non-meeting appointment
+                        {
+                            //single appointment I made in my Calendar
+                            break;
+                        }
+                    case "1": // Meeting and I am the Organizer
+                        {
+                            if (!string.IsNullOrEmpty(strOrganizerAddr))
+                            {
+                                if (!(ncCol[0].Mailbox.Address.ToUpper() == Globals.strSMTPAddr)) // this user's email should match with the Organizer. If not then error.
+                                {
+                                    bErr = true;
+                                    strErrors.Add("   ERROR: Organizer properties are in conflict.");
+                                    Globals.iErrors++;
+                                }
+                            }
+                            break;
+                        }
+                    case "2": // Received item - shouldn't be in this state
+                        {
+                            bErr = true;
+                            strErrors.Add("   ERROR: Appointment State is an incorrect value.");
+                            Globals.iErrors++;
+                            break;
+                        }
+                    case "3": // Meeting item that I received - I am an Attendee
+                        {
+                            if (!string.IsNullOrEmpty(strOrganizerAddr))
+                            {
+                                if (ncCol[0].Mailbox.Address.ToUpper() == Globals.strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
+                                {
+                                    bErr = true;
+                                    strErrors.Add("   ERROR: Organizer properties are in conflict.");
+                                    Globals.iErrors++;
+                                }
+                            }
+                            break;
+                        }
+                    default: // nothing else matters yet - can add later if needed
+                        {
+                            break;
+                        }
+                }
+
+
+            }
+
+            // TODO:  Work on Keywords... 
+
+            if (bErr)
+            {
+                Globals.outLog.WriteLine(strLogItem);
+                // AND log out each line in the List of errors
+            }
         }
 
         // Populate the property values for each of the props the app checks on.
@@ -297,7 +439,7 @@ namespace CalVerifier
             return;
         }
 
-        // EWS does nto return a string-ized hex blob, and need it for MrMapi conversion
+        // EWS does not return a string-ized hex blob, and need it for MrMapi conversion
         public static string GetStringFromBytes(byte[] bytes)
         {
             StringBuilder ret = new StringBuilder();

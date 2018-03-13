@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using Microsoft.Exchange.WebServices.Data;
 
 namespace CalVerifier
 {
@@ -24,6 +25,54 @@ namespace CalVerifier
             Console.WriteLine("-V   [Verbose. Will output tracing information.]");
             Console.WriteLine("-?   [Shows this usage information.]");
             Console.WriteLine("");
+        }
+
+        public static ExchangeService exService;
+
+        public static ExchangeService GetExService()
+        {
+            ExchangeService service = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
+            return service;
+        }
+
+        public static void LogLine(string strLine)
+        {
+            Globals.outLog.WriteLine(strLine);
+        }
+
+        // Check date/time values against boundary values.
+        // return TRUE if the time is no good.
+        public static bool TimeCheck(DateTime dtCheck)
+        {
+            int iComp = 0;
+            // less than 0 >> t1 earlier than t2
+            // zero >> t1 same as t2
+            //greater than 0 >> t1 is later than t2
+
+            iComp = DateTime.Compare(dtCheck, Globals.dtMin);
+            if (iComp <= 0)
+            {
+                return true;
+            }
+
+            iComp = DateTime.Compare(dtCheck, Globals.dtMax);
+            if (iComp >= 0)
+            {
+                return true;
+            }
+
+            iComp = DateTime.Compare(dtCheck, Globals.dtNone);
+            if (iComp >= 0)
+            {
+                return true;
+            }
+
+            if (dtCheck <= DateTime.MinValue || dtCheck >= DateTime.MaxValue)  // these are probably different from the Outlook boundary values
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
