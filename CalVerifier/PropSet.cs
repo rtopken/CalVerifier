@@ -81,8 +81,7 @@ namespace CalVerifier
             {"825E", "Binary", "PSETID_Appointment", "dispidApptTZDefStartDisplay"},
             {"825F", "Binary", "PSETID_Appointment", "dispidApptTZDefEndDisplay"},
             {"8260", "Binary", "PSETID_Appointment", "dispidApptTZDefRecur"},
-            {"8540", "Binary", "PSETID_Common", "dispidPropDefStream"},
-            {"", "StringArray", "PS_PUBLIC_STRINGS", "Keywords"}
+            {"8540", "Binary", "PSETID_Common", "dispidPropDefStream"}
         };
 
         public static string[,] RgProps { get => rgProps; set => rgProps = value; }

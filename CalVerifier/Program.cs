@@ -4,6 +4,10 @@ using System.Text;
 using Microsoft.Exchange.WebServices.Data;
 using Microsoft.Identity.Client;
 using System.IO;
+using static CalVerifier.Globals;
+using static CalVerifier.Utils;
+using static CalVerifier.PropSet;
+using static CalVerifier.Process;
 
 namespace CalVerifier
 {
@@ -26,15 +30,15 @@ namespace CalVerifier
                     {
                         if (args[i + 1].Length > 0)
                         {
-                            Globals.strListFile = args[i + 1];
-                            if (File.Exists(Globals.strListFile))
+                            strListFile = args[i + 1];
+                            if (File.Exists(strListFile))
                             {
-                                Globals.bListMode = true;
+                                bListMode = true;
                             }
                             else
                             {
-                                Console.WriteLine("Could not find the file " + Globals.strListFile + ".");
-                                Utils.ShowHelp();
+                                Console.WriteLine("Could not find the file " + strListFile + ".");
+                                ShowHelp();
                                 return;
                             }
                         }
@@ -42,34 +46,34 @@ namespace CalVerifier
 
                     if (args[i].ToUpper() == "-M" || args[i].ToUpper() == "/M") // move mode to move problem items out to the CalVerifier folder
                     {
-                        Globals.bMoveItems = true;
+                        bMoveItems = true;
                     }
 
                     if (args[i].ToUpper() == "-V" || args[i].ToUpper() == "/V") // include tracing, verbose mode.
                     {
-                        Globals.bVerbose = true;
+                        bVerbose = true;
                     }
 
                     if (args[i].ToUpper() == "-?" || args[i].ToUpper() == "/?") // display command switch help
                     {
-                        Utils.ShowHelp();
+                        ShowHelp();
                         return;
                     }
                 }
             }
 
-            Utils.exService = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
-            Utils.exService.UseDefaultCredentials = false;
+            exService = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
+            exService.UseDefaultCredentials = false;
 
-            if (Globals.bVerbose)
+            if (bVerbose)
             {
-                Utils.exService.TraceEnabled = true;
-                Utils.exService.TraceFlags = TraceFlags.All;
+                exService.TraceEnabled = true;
+                exService.TraceFlags = TraceFlags.All;
             }
 
-            Utils.ShowInfo();
+            ShowInfo();
 
-            if (Globals.bListMode)
+            if (bListMode)
             {
                 Console.Write("Enter the SMTP address of the ServiceAccount: ");
             }
@@ -110,62 +114,101 @@ namespace CalVerifier
 
             Console.WriteLine();
 
-            Utils.exService.Credentials = new WebCredentials(strAcct, strPwd);
-            Utils.exService.AutodiscoverUrl(strAcct, RedirectionUrlValidationCallback);
+            exService.Credentials = new WebCredentials(strAcct, strPwd);
+            exService.AutodiscoverUrl(strAcct, RedirectionUrlValidationCallback);
 
-            
-
-            if (Globals.bListMode) // List mode
+            if (bListMode) // List mode
             {
-                Globals.rgstrMBX = File.ReadAllLines(Globals.strListFile);
-                foreach (string strSMTP in Globals.rgstrMBX)
+                rgstrMBX = File.ReadAllLines(strListFile);
+                foreach (string strSMTP in rgstrMBX)
                 {
-                    NameResolutionCollection ncCol = Utils.exService.ResolveName(strSMTP, ResolveNameSearchLocation.DirectoryOnly, true);
-                    Globals.strDisplayName = ncCol[0].Contact.DisplayName;
-                    Console.WriteLine("Processing Calendar for " + Globals.strDisplayName);
+                    CreateLogFile();
+                    LogInfo();
+                    NameResolutionCollection ncCol = exService.ResolveName(strSMTP, ResolveNameSearchLocation.DirectoryOnly, true);
+                    strDisplayName = ncCol[0].Contact.DisplayName;
+                    DisplayAndLog("Processing Calendar for " + strDisplayName);
 
-                    Utils.exService.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, strSMTP);
-                    CalItems = GetCalItems(Utils.exService);
-                    Globals.strSMTPAddr = strSMTP.ToUpper();
+                    exService.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, strSMTP);
+                    CalItems = GetCalItems(exService);
+                    strSMTPAddr = strSMTP.ToUpper();
                     if (CalItems != null)
                     {
-                        Console.WriteLine("Found {0} items", CalItems.TotalCount);
-                        Console.WriteLine("");
+                        string strCount = CalItems.TotalCount.ToString();
+                        DisplayAndLog("Found " + strCount + " items");
+                        DisplayAndLog("");
+                        Console.Write("Processing items...");
                     }
                     else
                     {
                         return; // could not connect, error is displayed to user already.
                     }
 
+                    int i = 0;
                     foreach (Appointment appt in CalItems)
                     {
-                        Process.ProcessItem(appt);
+                        i++;
+                        if (i % 50 == 0)
+                            Console.Write(".");
+                        ProcessItem(appt);
                     }
+                    DisplayAndLog("===============================================================");
+                    DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
+                    DisplayAndLog("===============================================================");
+                    outLog.Close();
+                    if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
+                    {
+                        File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
+                    }
+                    File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
                 }
             }
             else // single mailbox mode
             {
-                NameResolutionCollection ncCol = Utils.exService.ResolveName(strAcct, ResolveNameSearchLocation.DirectoryOnly, true);
-                Globals.strDisplayName = ncCol[0].Contact.DisplayName;
-                Console.WriteLine("Processing Calendar for " + Globals.strDisplayName);
+                CreateLogFile();
+                LogInfo();
+                NameResolutionCollection ncCol = exService.ResolveName(strAcct, ResolveNameSearchLocation.DirectoryOnly, true);
+                if (ncCol[0].Contact != null)
+                {
+                    strDisplayName = ncCol[0].Contact.DisplayName;
+                    DisplayAndLog("Processing Calendar for " + strDisplayName);
+                }
+                else
+                {
+                    DisplayAndLog("Processing Calendar for " + strAcct);
+                }
 
-                Globals.strSMTPAddr = ncCol[0].Mailbox.Address.ToUpper();
+                strSMTPAddr = ncCol[0].Mailbox.Address.ToUpper();
 
-                CalItems = GetCalItems(Utils.exService);
+                CalItems = GetCalItems(exService);
                 if (CalItems != null)
                 {
-                    Console.WriteLine("Found {0} items", CalItems.TotalCount);
-                    Console.WriteLine("");
+                    string strCount = CalItems.TotalCount.ToString();
+                    DisplayAndLog("Found " + strCount + " items");
+                    DisplayAndLog("");
+                    Console.Write("Processing items...");
                 }
                 else
                 {
                     return;  // could not connect, error is displayed to user already.
                 }
 
+                int i = 0;
                 foreach (Appointment appt in CalItems)
                 {
-                    Process.ProcessItem(appt);
+                    i++;
+                    if (i % 50 == 0)
+                        Console.Write(".");
+                    ProcessItem(appt);
                 }
+                DisplayAndLog("===============================================================");
+                DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
+                DisplayAndLog("===============================================================");
+                outLog.Close();
+                if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
+                {
+                    File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
+                }
+                File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
             }
         }
 
@@ -187,7 +230,7 @@ namespace CalVerifier
             // creating a view with props to request / collect
             ItemView cView = new ItemView(int.MaxValue);
             List<ExtendedPropertyDefinition> propSet = new List<ExtendedPropertyDefinition>();
-            PropSet.DoProps(ref propSet);
+            DoProps(ref propSet);
             cView.PropertySet = new PropertySet(BasePropertySet.FirstClassProperties);
             foreach (PropertyDefinitionBase pdbProp in propSet)
             {

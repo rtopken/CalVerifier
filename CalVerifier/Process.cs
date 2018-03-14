@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Microsoft.Exchange.WebServices.Data;
+using static CalVerifier.Globals;
+using static CalVerifier.Utils;
 
 namespace CalVerifier
 {
@@ -38,7 +40,6 @@ namespace CalVerifier
         public static string strCleanGlobalObjID = "";        //PidLidCleanGlobalObjectId
         public static string strAuxFlags = "";                //dispidApptAuxFlags
         public static string strIsException = "";             //PidLidIsException
-        public static string strKeywords = "";                //Keywords
         public static string strTZStruct = "";                //dispidTimeZoneStruct
         public static string strTZDefStart = "";              //dispidApptTZDefStartDisplay
         public static string strTZDefEnd = "";                //dispidApptTZDefEndDisplay
@@ -48,10 +49,18 @@ namespace CalVerifier
         // Test this Calendar Item's properties.
         public static void ProcessItem(Appointment appt)
         {
-            string strLogItem = strSubject + "," + strLocation + "," + strStartWhole + "," + strEndWhole;
+            string strLogItem = "Problem item: " + strSubject + ", " + strLocation + ", " + strStartWhole + ", " + strEndWhole;
             List<string> strErrors = new List<string>();
             bool bErr = false;
-            // bool bWarn = false;
+            bool bWarn = false;
+            
+            foreach (string strVal in appt.Categories)
+            {
+                if (strVal.ToUpper() == "HOLIDAY")
+                {
+                    return; // we will skip testing holiday items since they are imported and should be okay
+                }
+            }
             
             // populate the values for the properties
             GetPropsReadable(appt);
@@ -61,27 +70,51 @@ namespace CalVerifier
             DateTime dtEnd = DateTime.Parse(strEndWhole);
             NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
 
-
             // really actually start testing props
+            if (string.IsNullOrEmpty(strSubject))
+            {
+                bWarn = true;
+                strErrors.Add("   WARNING: Subject is empty/missing.");
+                iWarn++;
+            }
             if (string.IsNullOrEmpty(strDeliveryTime))
             {
                 bErr = true;
                 strErrors.Add("   ERROR: Missing required Delivery Time property.");
-                Globals.iErrors++;
+                iErrors++;
             }
 
             if (string.IsNullOrEmpty(strRecurring))
             {
                 bErr = true;
                 strErrors.Add("   ERROR: Missing required Recurring property.");
-                Globals.iErrors++;
+                iErrors++;
+            }
+            else
+            {
+                if (strRecurring.ToUpper() == "TRUE")
+                {
+                    iRecurItems++;
+                    if (iRecurItems == 1299)
+                    {
+                        bErr = true;
+                        strErrors.Add("   ERROR: Reached limit of 1300 Recurring Appointments. Delete some older recurring appointments to correct this.");
+                        iErrors++;
+                    }
+                    if (iRecurItems == 1250)
+                    {
+                        bWarn = true;
+                        strErrors.Add("   WARNING: Approaching limit of 1300 Recurring Appointments. Delete some older recurring appointments to correct this.");
+                        iWarn++;
+                    }
+                }
             }
 
             if (string.IsNullOrEmpty(strStartWhole))
             {
                 bErr = true;
                 strErrors.Add("   ERROR: Missing required Start Time property.");
-                Globals.iErrors++;
+                iErrors++;
             }
             else // not empty/missing, but might still have problems
             {
@@ -89,14 +122,14 @@ namespace CalVerifier
                 {
                     bErr = true;
                     strErrors.Add("   ERROR: Start Time is greater than or equal to End Time.");
-                    Globals.iErrors++;
+                    iErrors++;
                 }
 
-                if (Utils.TimeCheck(dtStart))  
+                if (TimeCheck(dtStart))  
                 {
                     bErr = true;
                     strErrors.Add("   ERROR: Start Time is not set correctly."); 
-                    Globals.iErrors++;
+                    iErrors++;
                 }
             }
 
@@ -104,34 +137,119 @@ namespace CalVerifier
             {
                 bErr = true;
                 strErrors.Add("   ERROR: Missing required End Time property.");
-                Globals.iErrors++;
+                iErrors++;
             }
             else // not empty/missing, but might still have problems
             {
 
-                if (Utils.TimeCheck(dtEnd))
+                if (TimeCheck(dtEnd))
                 {
                     bErr = true;
                     strErrors.Add("   ERROR: End Time is not set correctly.");
-                    Globals.iErrors++;
+                    iErrors++;
                 }
             }
 
             if (string.IsNullOrEmpty(strOrganizerAddr))
             {
-                if (int.Parse(strApptStateFlags) > 0) // if no Organizer AND this is a meeting then that's bad.
+                if (int.Parse(strApptStateFlags) > 0) // if no Organizer Address AND this is a meeting then that's bad.
                 {
                     bErr = true;
                     strErrors.Add("   ERROR: Missing required Organizer Address property.");
-                    Globals.iErrors++;
+                    iErrors++;
                 }
+            }
+
+            if (string.IsNullOrEmpty(strSenderName))
+            {
+                if (int.Parse(strApptStateFlags) > 0) // if no Sender Name AND this is a meeting then that's bad.
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Missing required Sender Name property.");
+                    iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strSenderAddr))
+            {
+                if (int.Parse(strApptStateFlags) > 0) // if no Sender Address AND this is a meeting then that's bad.
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Missing required Sender Address property.");
+                    iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strMsgClass))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Message Class property.");
+                iErrors++;
+            }
+            else
+            {
+                bool bFound = false;
+                foreach (string strClass in calMsgClasses)
+                {
+                    if (strClass == strMsgClass)
+                    {
+                        bFound = true;
+                        break; // if one of the known classes then all is good.
+                    }
+                }
+
+                if (!bFound)
+                {
+                    bWarn = true;
+                    strErrors.Add("   WARNING: Unknown or incorrect Message Class " + strMsgClass + " is set on this item.");
+                    iWarn++;
+                }
+            }
+
+            if (!(string.IsNullOrEmpty(strMsgSize)))
+            {
+                int iSize = int.Parse(strMsgSize);
+                string strNum = "";
+                
+
+                if (iSize >= 52428800)
+                {
+                    strNum = "50M";
+                }
+                else if (iSize >= 26214400)
+                {
+                    strNum = "25M";
+                }
+                else if (iSize >= 10485760)
+                {
+                    strNum = "10M";
+                }
+
+                if (iSize >= 10485760) // if >= 10M then one of the above is true...
+                {
+                    bWarn = true;
+                    iWarn++;
+                    if (strHasAttach.ToUpper() == "TRUE" && strRecurring.ToUpper() == "TRUE")
+                    {
+                        strErrors.Add("   WARNING: Message size exceeds " + strNum + " which may indicate a problematic long-running recurring meeting.");
+                    }
+                    else if (strHasAttach.ToUpper() == "TRUE")
+                    {
+                        strErrors.Add("   WARNING: Message size exceeds " + strNum + " but is not set as recurring. Might have large and/or many attachments.");
+                    }
+                    else
+                    {
+                        strErrors.Add("   WARNING: Message size exceeds " + strNum + " but has no attachments. Might have some large problem properties.");
+                    }
+                }
+
             }
 
             if (string.IsNullOrEmpty(strApptStateFlags)) //
             {
                 bErr = true;
                 strErrors.Add("   ERROR: Missing required Appointment State property.");
-                Globals.iErrors++;
+                iErrors++;
             }
             else
             {
@@ -151,7 +269,9 @@ namespace CalVerifier
                                 {
                                     bErr = true;
                                     strErrors.Add("   ERROR: Organizer properties are in conflict.");
-                                    Globals.iErrors++;
+                                    strErrors.Add("   Organizer Address: " + strOrganizerAddr);
+                                    strErrors.Add("   Appt State: " + strDisplayName + " is the Organizer");
+                                    iErrors++;
                                 }
                             }
                             break;
@@ -160,18 +280,20 @@ namespace CalVerifier
                         {
                             bErr = true;
                             strErrors.Add("   ERROR: Appointment State is an incorrect value.");
-                            Globals.iErrors++;
+                            iErrors++;
                             break;
                         }
                     case "3": // Meeting item that I received - I am an Attendee
                         {
                             if (!string.IsNullOrEmpty(strOrganizerAddr))
                             {
-                                if (ncCol[0].Mailbox.Address.ToUpper() == Globals.strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
+                                if (ncCol[0].Mailbox.Address.ToUpper() == strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
                                 {
                                     bErr = true;
                                     strErrors.Add("   ERROR: Organizer properties are in conflict.");
-                                    Globals.iErrors++;
+                                    strErrors.Add("   Organizer Address: " + strOrganizerAddr);
+                                    strErrors.Add("   Appt State: " + strDisplayName + " is an Attendee");
+                                    iErrors++;
                                 }
                             }
                             break;
@@ -181,17 +303,27 @@ namespace CalVerifier
                             break;
                         }
                 }
-
-
             }
 
-            // TODO:  Work on Keywords... 
-
-            if (bErr)
+            if (string.IsNullOrEmpty(strTZDefStart))
             {
-                Globals.outLog.WriteLine(strLogItem);
-                // AND log out each line in the List of errors
+                if (strRecurring.ToUpper() == "TRUE")
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Missing required Timezone property.");
+                    iErrors++;
+                }
             }
+
+            if (bErr || bWarn)
+            {
+                outLog.WriteLine(strLogItem);
+                // AND log out each line in the List of errors
+                foreach (string strLine in strErrors)
+                {
+                    outLog.WriteLine(strLine);
+                }
+            } 
         }
 
         // Populate the property values for each of the props the app checks on.
@@ -229,24 +361,13 @@ namespace CalVerifier
                 strType = extProp.PropertyDefinition.MapiType.ToString();
 
                 // Get the Prop Name
-                if (strType == "StringArray")
-                {
-                    strPropName = "Keywords"; // this is the only string array prop-value this tool consumes
-                }
-                else
-                {
-                    strPropName = PropSet.GetPropNameFromTag(strHexTag, strSetID);
-                }
+                strPropName = PropSet.GetPropNameFromTag(strHexTag, strSetID);
 
                 // if it's binary then convert it to a string-ized binary - will be converted using MrMapi
                 if (strType == "Binary")
                 {
                     byte[] binData = extProp.Value as byte[];
                     strValue = GetStringFromBytes(binData);
-                }
-                else if (strType == "StringArray")
-                {
-                    strKeywords = extProp.Value.ToString();
                 }
                 else
                 {
