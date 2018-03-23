@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Exchange.WebServices.Data;
-using Microsoft.Identity.Client;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using System.Threading.Tasks;
 using System.IO;
 using static CalVerifier.Globals;
 using static CalVerifier.Utils;
@@ -16,10 +17,9 @@ namespace CalVerifier
         static void Main(string[] args)
         {
             string strAcct = "";
-            string strPwd = "";
-            
-            List<string> strProxyAddresses = new List<string>();
-            
+            string strTenant = "";
+            string strEmailAddr = "";
+
             FindItemsResults<Item> CalItems = null;
 
             if (args.Length > 0)
@@ -75,47 +75,29 @@ namespace CalVerifier
 
             if (bListMode)
             {
-                Console.Write("Enter the SMTP address of the ServiceAccount: ");
+                Console.Write("Press <ENTER> to enter credentials for the ServiceAccount.");
             }
             else
             {
-                Console.Write("Enter the SMTP address of the Mailbox: ");
+                Console.Write("Press <ENTER> to enter credentials for the Mailbox.");
             }
 
-            strAcct = Console.ReadLine();
-            Console.Write("Enter the password for {0}: ", strAcct);
-
-            // use below while loop to mask the password while reading it in
-            bool bEnter = true;
-            int iPwdChars = 0;
-            while (bEnter)
-            {
-                ConsoleKeyInfo ckiKey = Console.ReadKey(true);
-                if (ckiKey.Key == ConsoleKey.Enter)
-                {
-                    bEnter = false;
-                }
-                else if (ckiKey.Key == ConsoleKey.Backspace)
-                {
-                    if (strPwd.Length >= 1)
-                    {
-                        int oldLength = strPwd.Length;
-                        strPwd = strPwd.Substring(0, oldLength - 1);
-                        Console.Write("\b \b");
-                    }
-                }
-                else
-                {
-                    strPwd = strPwd + ckiKey.KeyChar.ToString();
-                    iPwdChars++;
-                    Console.Write('*');
-                }
-            }
-
+            Console.ReadLine();
             Console.WriteLine();
+            
+            AuthenticationResult authResult = GetToken();
+            exService.Credentials = new OAuthCredentials(authResult.AccessToken);
+            strAcct = authResult.UserInfo.DisplayableId;
+            strTenant = strAcct.Split('@')[1];
+            exService.Url = new Uri(strSrvURI + "/ews/exchange.asmx");
 
-            exService.Credentials = new WebCredentials(strAcct, strPwd);
-            exService.AutodiscoverUrl(strAcct, RedirectionUrlValidationCallback);
+            NameResolutionCollection ncCol = null;
+
+            // Should only do this if the switch was set.
+            if (bMoveItems)
+            {
+                CreateErrFld();
+            }
 
             if (bListMode) // List mode
             {
@@ -124,9 +106,24 @@ namespace CalVerifier
                 {
                     CreateLogFile();
                     LogInfo();
-                    NameResolutionCollection ncCol = exService.ResolveName(strSMTP, ResolveNameSearchLocation.DirectoryOnly, true);
-                    strDisplayName = ncCol[0].Contact.DisplayName;
-                    DisplayAndLog("Processing Calendar for " + strDisplayName);
+                    ncCol = DoResolveName(strSMTP);
+                    if (ncCol == null)
+                    {
+                        // Didn't get a NameResCollection, so error out.
+                        Console.WriteLine("");
+                        Console.WriteLine("Exiting the program.");
+                        return;
+                    }
+
+                    if (ncCol[0].Contact != null)
+                    {
+                        strDisplayName = ncCol[0].Contact.DisplayName;
+                        DisplayAndLog("Processing Calendar for " + strDisplayName);
+                    }
+                    else
+                    {
+                        DisplayAndLog("Processing Calendar for " + strSMTP);
+                    }
 
                     exService.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, strSMTP);
                     CalItems = GetCalItems(exService);
@@ -155,6 +152,7 @@ namespace CalVerifier
                     DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
                     DisplayAndLog("===============================================================");
                     outLog.Close();
+
                     if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
                     {
                         File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
@@ -166,10 +164,19 @@ namespace CalVerifier
             {
                 CreateLogFile();
                 LogInfo();
-                NameResolutionCollection ncCol = exService.ResolveName(strAcct, ResolveNameSearchLocation.DirectoryOnly, true);
+                ncCol = DoResolveName(strAcct);
+                if (ncCol == null)
+                {
+                    // Didn't get a NameResCollection, so error out.
+                    Console.WriteLine("");
+                    Console.WriteLine("Exiting the program.");
+                    return;
+                }
+
                 if (ncCol[0].Contact != null)
                 {
                     strDisplayName = ncCol[0].Contact.DisplayName;
+                    strEmailAddr = ncCol[0].Mailbox.Address;
                     DisplayAndLog("Processing Calendar for " + strDisplayName);
                 }
                 else
@@ -177,7 +184,7 @@ namespace CalVerifier
                     DisplayAndLog("Processing Calendar for " + strAcct);
                 }
 
-                strSMTPAddr = ncCol[0].Mailbox.Address.ToUpper();
+                strSMTPAddr = strEmailAddr.ToUpper();
 
                 CalItems = GetCalItems(exService);
                 if (CalItems != null)
@@ -196,7 +203,7 @@ namespace CalVerifier
                 foreach (Appointment appt in CalItems)
                 {
                     i++;
-                    if (i % 50 == 0)
+                    if (i % 20 == 0)
                         Console.Write(".");
                     ProcessItem(appt);
                 }
@@ -204,12 +211,37 @@ namespace CalVerifier
                 DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
                 DisplayAndLog("===============================================================");
                 outLog.Close();
+
                 if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
                 {
                     File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
                 }
                 File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
             }
+        }
+
+        
+        // Go get an OAuth token to use Exchange Online 
+        private static AuthenticationResult GetToken()
+        {
+            AuthenticationResult ar = null;
+            AuthenticationContext ctx = new AuthenticationContext(strAuthCommon);
+
+            try
+            {
+                ar = ctx.AcquireTokenAsync(strSrvURI, strClientID, new Uri(strRedirURI), new PlatformParameters(PromptBehavior.Always)).Result;
+            }
+            catch (Exception Ex)
+            {
+                var authEx = Ex.InnerException as AdalException;
+                
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("An error occurred during authentication with the service:");
+                Console.WriteLine(authEx.HResult.ToString("X"));
+                Console.WriteLine(authEx.Message);
+                Console.ResetColor();
+            }
+            return ar;
         }
 
         public static FindItemsResults<Item> GetCalItems(ExchangeService service)
@@ -220,9 +252,13 @@ namespace CalVerifier
                 // Here's where it will do the connect to the user / Calendar
                 fldCal = Folder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
             }
-            catch
+            catch (ServiceResponseException ex)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("");
                 Console.WriteLine("Could not connect to this user's mailbox or calendar.");
+                Console.WriteLine(ex.Message);
+                Console.ResetColor();
                 return null;
             }
 
@@ -240,23 +276,6 @@ namespace CalVerifier
             // now go get the items
             FindItemsResults<Item> cAppts = fldCal.FindItems(cView);
             return cAppts;
-        }
-
-        private static bool RedirectionUrlValidationCallback(string redirectionUrl)
-        {
-            // The default for the validation callback is to reject the URL.
-            bool result = false;
-
-            Uri redirectionUri = new Uri(redirectionUrl);
-
-            // Validate the contents of the redirection URL. In this simple validation
-            // callback, the redirection URL is considered valid if it is using HTTPS
-            // to encrypt the authentication credentials. 
-            if (redirectionUri.Scheme == "https")
-            {
-                result = true;
-            }
-            return result;
         }
     }
 }

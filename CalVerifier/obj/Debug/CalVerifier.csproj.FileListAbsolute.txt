@@ -16,3 +16,7 @@ C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Identi
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csproj.CopyComplete
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\x64\MrMAPI.exe
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\x86\MrMAPI.exe
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.dll
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.dll
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.xml
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.xml

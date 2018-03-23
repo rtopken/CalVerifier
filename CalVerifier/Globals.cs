@@ -1,12 +1,18 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Configuration;
 
 
 namespace CalVerifier
 {
     public class Globals
     {
+        public static string strClientID = "99ae2651-4245-4951-b37f-5369252e3f57"; //ConfigurationManager.AppSettings["ClientID"];
+        public static string strRedirURI = "https://CalVerifier";
+        public static string strAuthCommon = "https://login.microsoftonline.com/common";
+        public static string strSrvURI = "https://outlook.office365.com";                            // O365 URI         
+        public static string strResource = "00000002-0000-0ff1-ce00-000000000000";                   // O365 Exchange Resource
         public static bool bListMode = false;
         public static bool bMoveItems = false;
         public static bool bVerbose = false;

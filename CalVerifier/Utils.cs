@@ -2,7 +2,9 @@
 using System.IO;
 using System.Text;
 using Microsoft.Exchange.WebServices.Data;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using static CalVerifier.Globals;
 
 namespace CalVerifier
@@ -130,6 +132,47 @@ namespace CalVerifier
             }
 
             return System.IO.Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), mapiBitness, "MrMAPI.exe");
+        }
+
+        // Create the CalVerifier folder
+        public static void CreateErrFld()
+        {
+            Folder fldCalVerifier = new Folder(exService);
+            fldCalVerifier.DisplayName = "CalVerifier";
+            
+            try
+            {
+                fldCalVerifier.Save(WellKnownFolderName.MsgFolderRoot);
+            }
+            catch (ServiceResponseException ex)
+            {
+                if (!(ex.ErrorCode.ToString().ToUpper() == "ERRORFOLDEREXISTS"))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("");
+                    Console.WriteLine(ex.Message);
+                    Console.ResetColor();
+                }
+            }
+        }
+
+        public static NameResolutionCollection DoResolveName(string strResolve)
+        {
+            NameResolutionCollection ncCol = null;
+            try
+            {
+                ncCol = exService.ResolveName(strResolve, ResolveNameSearchLocation.DirectoryOnly, true);
+            }
+            catch (ServiceRequestException ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error when attempting to resolve the name for " + strResolve + ":");
+                Console.WriteLine(ex.Message);
+                Console.ResetColor();
+                return null;
+            }
+
+            return ncCol;
         }
 
         // Check date/time values against boundary values.

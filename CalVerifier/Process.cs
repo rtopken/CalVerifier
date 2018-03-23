@@ -69,6 +69,15 @@ namespace CalVerifier
             DateTime dtStart = DateTime.Parse(strStartWhole);
             DateTime dtEnd = DateTime.Parse(strEndWhole);
             NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
+            string strOrganizerSMTP = "";
+            if (ncCol.Count > 0 && !string.IsNullOrEmpty(ncCol[0].Mailbox.Address))
+            {
+                strOrganizerSMTP = ncCol[0].Mailbox.Address;
+            }
+            else
+            {
+                strOrganizerSMTP = strOrganizerAddr;
+            }
 
             // really actually start testing props
             if (string.IsNullOrEmpty(strSubject))
@@ -263,9 +272,9 @@ namespace CalVerifier
                         }
                     case "1": // Meeting and I am the Organizer
                         {
-                            if (!string.IsNullOrEmpty(strOrganizerAddr))
+                            if (!string.IsNullOrEmpty(strOrganizerAddr) && !string.IsNullOrEmpty(strOrganizerSMTP))
                             {
-                                if (!(ncCol[0].Mailbox.Address.ToUpper() == Globals.strSMTPAddr)) // this user's email should match with the Organizer. If not then error.
+                                if (!(strOrganizerSMTP.ToUpper() == strSMTPAddr)) // this user's email should match with the Organizer. If not then error.
                                 {
                                     bErr = true;
                                     strErrors.Add("   ERROR: Organizer properties are in conflict.");
@@ -285,9 +294,9 @@ namespace CalVerifier
                         }
                     case "3": // Meeting item that I received - I am an Attendee
                         {
-                            if (!string.IsNullOrEmpty(strOrganizerAddr))
+                            if (!string.IsNullOrEmpty(strOrganizerAddr) && !string.IsNullOrEmpty(strOrganizerSMTP))
                             {
-                                if (ncCol[0].Mailbox.Address.ToUpper() == strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
+                                if (strOrganizerSMTP.ToUpper() == strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
                                 {
                                     bErr = true;
                                     strErrors.Add("   ERROR: Organizer properties are in conflict.");
@@ -371,7 +380,10 @@ namespace CalVerifier
                 }
                 else
                 {
-                    strValue = extProp.Value.ToString();
+                    if (extProp.Value != null)
+                    {
+                        strValue = extProp.Value.ToString();
+                    }
                 }
 
                 switch (strPropName)
