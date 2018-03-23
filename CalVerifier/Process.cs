@@ -209,9 +209,18 @@ namespace CalVerifier
 
                 if (!bFound)
                 {
-                    bWarn = true;
-                    strErrors.Add("   WARNING: Unknown or incorrect Message Class " + strMsgClass + " is set on this item.");
-                    iWarn++;
+                    if (!(strMsgClass.Contains("IPM.Appointment")))
+                    {
+                        bErr = true;
+                        strErrors.Add("   ERROR: Unknown or incorrect Message Class " + strMsgClass + " is set on this item.");
+                        iErrors++;
+                    }
+                    else
+                    {
+                        bWarn = true;
+                        strErrors.Add("   WARNING: Unknown or incorrect Message Class " + strMsgClass + " is set on this item.");
+                        iWarn++;
+                    }
                 }
             }
 
@@ -333,6 +342,12 @@ namespace CalVerifier
                     outLog.WriteLine(strLine);
                 }
             } 
+
+            // Move items to CalVerifier folder if error is flagged and in "move" mode
+            if (bMoveItems && bErr)
+            {
+                appt.Move(fldCalVerifier.Id);
+            }
         }
 
         // Populate the property values for each of the props the app checks on.

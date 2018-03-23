@@ -44,6 +44,16 @@ namespace CalVerifier
             LogLine("Checks Calendars for potential problem items and reports them.\r\n");
         }
 
+        public static void DisplayPrivacyInfo()
+        {
+            Console.WriteLine("\r\n");
+            Console.WriteLine("Privacy Note:");
+            Console.WriteLine("===============");
+            Console.WriteLine("The data files produced by CalVerifier can contain PII such as e-mail addresses.");
+            Console.WriteLine("Please remove these files from your system after analysis and/or supplying them to support for analysis.");
+            Console.WriteLine("For more information on Microsoft's privacy standards and practices, please go to https://www.microsoft.com/en-us/trustcenter/Privacy");
+        }
+
         public static void LogLine(string strLine)
         {
             outLog.WriteLine(strLine);
@@ -137,12 +147,13 @@ namespace CalVerifier
         // Create the CalVerifier folder
         public static void CreateErrFld()
         {
-            Folder fldCalVerifier = new Folder(exService);
-            fldCalVerifier.DisplayName = "CalVerifier";
+            Folder fld = new Folder(exService);
+            fld.DisplayName = "CalVerifier";
             
             try
             {
-                fldCalVerifier.Save(WellKnownFolderName.MsgFolderRoot);
+                fld.Save(WellKnownFolderName.MsgFolderRoot);
+
             }
             catch (ServiceResponseException ex)
             {
@@ -152,8 +163,35 @@ namespace CalVerifier
                     Console.WriteLine("");
                     Console.WriteLine(ex.Message);
                     Console.ResetColor();
+                    return;
+                }
+                else
+                {
+                    fld = FindFolder("CalVerifier");
                 }
             }
+            fldCalVerifier = fld;
+        }
+
+        public static Folder FindFolder(string strFolder)
+        {
+            Folder fldSearch = null;
+
+            FolderView view = new FolderView(100);
+            view.PropertySet = new PropertySet(BasePropertySet.IdOnly);
+            view.PropertySet.Add(FolderSchema.DisplayName);
+            view.Traversal = FolderTraversal.Deep;
+            FindFoldersResults findFolderResults = exService.FindFolders(WellKnownFolderName.Root, view);
+            //find specific folder
+            foreach (Folder fld in findFolderResults)
+            {
+                //show folderId of the folder "test"
+                if (fld.DisplayName == strFolder)
+                {
+                    fldSearch = fld;
+                }    
+            }
+            return fldSearch;
         }
 
         public static NameResolutionCollection DoResolveName(string strResolve)

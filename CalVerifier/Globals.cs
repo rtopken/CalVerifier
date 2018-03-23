@@ -2,6 +2,7 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Configuration;
+using Microsoft.Exchange.WebServices.Data;
 
 
 namespace CalVerifier
@@ -31,6 +32,7 @@ namespace CalVerifier
         public static StreamWriter outLog;
         public static List<string> strDupCheck = new List<string>();
         public static int iRecurItems = 0;
+        public static Folder fldCalVerifier = null;
 
         public static void CreateLogFile()
         {

@@ -144,13 +144,15 @@ namespace CalVerifier
                     foreach (Appointment appt in CalItems)
                     {
                         i++;
-                        if (i % 50 == 0)
+                        if (i % 20 == 0)
                             Console.Write(".");
                         ProcessItem(appt);
                     }
+                    DisplayAndLog("\r\n");
                     DisplayAndLog("===============================================================");
                     DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
                     DisplayAndLog("===============================================================");
+
                     outLog.Close();
 
                     if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
@@ -158,7 +160,10 @@ namespace CalVerifier
                         File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
                     }
                     File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
+
                 }
+                Console.WriteLine("");
+                Console.WriteLine("Please check " + strAppPath + " for the CalVerifier logs.");
             }
             else // single mailbox mode
             {
@@ -207,9 +212,11 @@ namespace CalVerifier
                         Console.Write(".");
                     ProcessItem(appt);
                 }
+                DisplayAndLog("\r\n");
                 DisplayAndLog("===============================================================");
                 DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
                 DisplayAndLog("===============================================================");
+
                 outLog.Close();
 
                 if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
@@ -217,10 +224,14 @@ namespace CalVerifier
                     File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
                 }
                 File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
+
+                Console.WriteLine("");
+                Console.WriteLine("Please check " + strAppPath + " for " + strSMTPAddr + "_CalVerifier.log for more information.");
             }
+
+            DisplayPrivacyInfo();
         }
 
-        
         // Go get an OAuth token to use Exchange Online 
         private static AuthenticationResult GetToken()
         {
@@ -244,6 +255,7 @@ namespace CalVerifier
             return ar;
         }
 
+        // Go connect to the Calendar folder and get the calendar items
         public static FindItemsResults<Item> GetCalItems(ExchangeService service)
         {
             Folder fldCal = null;
