@@ -49,7 +49,11 @@ namespace CalVerifier
         // Test this Calendar Item's properties.
         public static void ProcessItem(Appointment appt)
         {
+            // populate the values for the properties
+            GetPropsReadable(appt);
+
             string strLogItem = "Problem item: " + strSubject + ", " + strLocation + ", " + strStartWhole + ", " + strEndWhole;
+
             List<string> strErrors = new List<string>();
             bool bErr = false;
             bool bWarn = false;
@@ -61,13 +65,12 @@ namespace CalVerifier
                     return; // we will skip testing holiday items since they are imported and should be okay
                 }
             }
-            
-            // populate the values for the properties
-            GetPropsReadable(appt);
 
             //get other types of values as needed from the string values
             DateTime dtStart = DateTime.Parse(strStartWhole);
             DateTime dtEnd = DateTime.Parse(strEndWhole);
+
+            // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
             NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
             string strOrganizerSMTP = "";
             if (ncCol.Count > 0 && !string.IsNullOrEmpty(ncCol[0].Mailbox.Address))
@@ -86,6 +89,7 @@ namespace CalVerifier
                 strErrors.Add("   WARNING: Subject is empty/missing.");
                 iWarn++;
             }
+            
             if (string.IsNullOrEmpty(strDeliveryTime))
             {
                 bErr = true;
@@ -127,10 +131,10 @@ namespace CalVerifier
             }
             else // not empty/missing, but might still have problems
             {
-                if (dtEnd <= dtStart)
+                if (dtEnd < dtStart)
                 {
                     bErr = true;
-                    strErrors.Add("   ERROR: Start Time is greater than or equal to End Time.");
+                    strErrors.Add("   ERROR: Start Time is greater than the End Time.");
                     iErrors++;
                 }
 

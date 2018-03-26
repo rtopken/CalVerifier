@@ -20,7 +20,7 @@ namespace CalVerifier
             string strTenant = "";
             string strEmailAddr = "";
 
-            FindItemsResults<Item> CalItems = null;
+            List<Item> CalItems = null;
 
             if (args.Length > 0)
             {
@@ -130,7 +130,7 @@ namespace CalVerifier
                     strSMTPAddr = strSMTP.ToUpper();
                     if (CalItems != null)
                     {
-                        string strCount = CalItems.TotalCount.ToString();
+                        string strCount = CalItems.Count.ToString();
                         DisplayAndLog("Found " + strCount + " items");
                         DisplayAndLog("");
                         Console.Write("Processing items...");
@@ -141,15 +141,23 @@ namespace CalVerifier
                     }
 
                     int i = 0;
+                    int n = 0;
                     foreach (Appointment appt in CalItems)
                     {
                         i++;
-                        if (i % 20 == 0)
-                            Console.Write(".");
+                        if (i % 5 == 0)
+                        {
+                            Console.SetCursorPosition(0, Console.CursorTop);
+                            Console.Write("");
+                            Console.Write(cSpin[n % 4]);
+                            n++;
+                        }
                         ProcessItem(appt);
+                        iCheckedItems++;
                     }
                     DisplayAndLog("\r\n");
                     DisplayAndLog("===============================================================");
+                    DisplayAndLog("Checked " + iCheckedItems.ToString() + " items.");
                     DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
                     DisplayAndLog("===============================================================");
 
@@ -194,10 +202,10 @@ namespace CalVerifier
                 CalItems = GetCalItems(exService);
                 if (CalItems != null)
                 {
-                    string strCount = CalItems.TotalCount.ToString();
+                    string strCount = CalItems.Count.ToString();
                     DisplayAndLog("Found " + strCount + " items");
                     DisplayAndLog("");
-                    Console.Write("Processing items...");
+                    Console.WriteLine("Processing items ");
                 }
                 else
                 {
@@ -205,15 +213,23 @@ namespace CalVerifier
                 }
 
                 int i = 0;
+                int n = 0;
                 foreach (Appointment appt in CalItems)
                 {
                     i++;
-                    if (i % 20 == 0)
-                        Console.Write(".");
+                    if (i % 5 == 0)
+                    {
+                        Console.SetCursorPosition(0,Console.CursorTop);
+                        Console.Write("");
+                        Console.Write(cSpin[n % 4]);
+                        n++;
+                    }
                     ProcessItem(appt);
+                    iCheckedItems++;
                 }
                 DisplayAndLog("\r\n");
                 DisplayAndLog("===============================================================");
+                DisplayAndLog("Checked " + iCheckedItems.ToString() + " items.");
                 DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
                 DisplayAndLog("===============================================================");
 
@@ -256,12 +272,18 @@ namespace CalVerifier
         }
 
         // Go connect to the Calendar folder and get the calendar items
-        public static FindItemsResults<Item> GetCalItems(ExchangeService service)
+        public static List<Item> GetCalItems(ExchangeService service)
         {
             Folder fldCal = null;
+            int iOffset = 0;
+            int iPageSize = 500;
+            bool bMore = true;
+            List<Item> cAppts = new List<Item>();
+            FindItemsResults<Item> findResults = null;
+
             try
             {
-                // Here's where it will do the connect to the user / Calendar
+                // Here's where it connects to the Calendar
                 fldCal = Folder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
             }
             catch (ServiceResponseException ex)
@@ -276,7 +298,7 @@ namespace CalVerifier
 
             // if we're in then we get here
             // creating a view with props to request / collect
-            ItemView cView = new ItemView(int.MaxValue);
+            ItemView cView = new ItemView(iPageSize, iOffset, OffsetBasePoint.Beginning);
             List<ExtendedPropertyDefinition> propSet = new List<ExtendedPropertyDefinition>();
             DoProps(ref propSet);
             cView.PropertySet = new PropertySet(BasePropertySet.FirstClassProperties);
@@ -285,8 +307,23 @@ namespace CalVerifier
                 cView.PropertySet.Add(pdbProp);
             }
 
-            // now go get the items
-            FindItemsResults<Item> cAppts = fldCal.FindItems(cView);
+            // now go get the items. 1000 Max so must loop to get all items
+            while (bMore)
+            {
+                findResults = fldCal.FindItems(cView);
+
+                foreach (Item item in findResults.Items)
+                {
+                    cAppts.Add(item);
+                }
+
+                bMore = findResults.MoreAvailable;
+                if (bMore)
+                {
+                    cView.Offset += iPageSize;
+                }
+            }
+
             return cAppts;
         }
     }

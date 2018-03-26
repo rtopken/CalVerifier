@@ -33,6 +33,8 @@ namespace CalVerifier
         public static List<string> strDupCheck = new List<string>();
         public static int iRecurItems = 0;
         public static Folder fldCalVerifier = null;
+        public static int iCheckedItems = 0;
+        public static char[] cSpin = new char[] { '/', '-', '\\', '|' };
 
         public static void CreateLogFile()
         {
