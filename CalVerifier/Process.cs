@@ -52,11 +52,17 @@ namespace CalVerifier
             // populate the values for the properties
             GetPropsReadable(appt);
 
-            string strLogItem = "Problem item: " + strSubject + ", " + strLocation + ", " + strStartWhole + ", " + strEndWhole;
+            string strLogItem = "Problem item: " + strSubject + " | " + strLocation + "| " + strStartWhole + " | " + strEndWhole;
+
+            if (bVerbose)
+            {
+                outLog.WriteLine("Checking item " + iCheckedItems+1 + ": " + strSubject + " | " + strStartWhole + "|" + strEndWhole);
+            }
 
             List<string> strErrors = new List<string>();
             bool bErr = false;
             bool bWarn = false;
+            bool bOrgTest = true;
             
             foreach (string strVal in appt.Categories)
             {
@@ -69,6 +75,8 @@ namespace CalVerifier
             //get other types of values as needed from the string values
             DateTime dtStart = DateTime.Parse(strStartWhole);
             DateTime dtEnd = DateTime.Parse(strEndWhole);
+            DateTime dtCreate = DateTime.Parse(strCreateTime);
+            List<string> strRecurData = null;
 
             // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
             NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
@@ -79,10 +87,54 @@ namespace CalVerifier
             }
             else
             {
+                bOrgTest = false;
                 strOrganizerSMTP = strOrganizerAddr;
             }
 
-            // really actually start testing props
+            // parse the recurrence blob and get useful stuff out of it
+            if (!string.IsNullOrEmpty(strRecurBlob))
+            {
+                strRecurData = GetRecurData(strRecurBlob);
+
+                // strRecurData is the readable recurrence data stored in a List<string>
+
+
+            }
+
+            // now really actually start testing props
+
+            // check for duplicate calendar items
+            string strDupLine = strSubject + "," + strLocation + "," + strOrganizerAddr + "," + strRecurring + "," + strStartWhole + "," + strEndWhole;
+            if (strDupCheck.Count > 0)
+            {
+                bool bAdd = true;
+                foreach (string str in strDupCheck)
+                {
+                    string strSubj = str.Split(',')[0];
+                    string strStart = str.Split(',')[4];
+                    string strEnd = str.Split(',')[5];
+                    if (str == strDupLine)
+                    {
+                        bErr = true;
+                        strErrors.Add("   ERROR: Duplicate Items.");
+                        strErrors.Add("          This Item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                        strErrors.Add("          Other Item: " + strSubj + " | " + strStart + " | " + strEnd);
+                        iErrors++;
+                        bAdd = false;
+                    }
+                }
+                if (bAdd)
+                {
+                    strDupCheck.Add(strDupLine);
+                }
+            }
+            else
+            {
+                strDupCheck.Add(strDupLine);
+            }
+
+            
+
             if (string.IsNullOrEmpty(strSubject))
             {
                 bWarn = true;
@@ -289,11 +341,23 @@ namespace CalVerifier
                             {
                                 if (!(strOrganizerSMTP.ToUpper() == strSMTPAddr)) // this user's email should match with the Organizer. If not then error.
                                 {
-                                    bErr = true;
-                                    strErrors.Add("   ERROR: Organizer properties are in conflict.");
-                                    strErrors.Add("   Organizer Address: " + strOrganizerAddr);
-                                    strErrors.Add("   Appt State: " + strDisplayName + " is the Organizer");
-                                    iErrors++;
+                                    if (bOrgTest)
+                                    {
+                                        bErr = true;
+                                        strErrors.Add("   ERROR: Organizer properties are in conflict.");
+                                        strErrors.Add("          Organizer Address: " + strOrganizerAddr);
+                                        strErrors.Add("          Appt State: " + strDisplayName + " is the Organizer");
+                                        iErrors++;
+                                    }
+                                    else
+                                    {
+                                        bWarn = true;
+                                        strErrors.Add("   WARNING: Organizer properties might be in conflict.");
+                                        strErrors.Add("            Organizer Address: " + strOrganizerAddr);
+                                        strErrors.Add("            Appt State: " + strDisplayName + " is the Organizer");
+                                        strErrors.Add("            If the address above is one of the proxyAddresses for " + strDisplayName + " then all is good.");
+                                        iWarn++;
+                                    }
                                 }
                             }
                             break;
@@ -311,11 +375,23 @@ namespace CalVerifier
                             {
                                 if (strOrganizerSMTP.ToUpper() == strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
                                 {
-                                    bErr = true;
-                                    strErrors.Add("   ERROR: Organizer properties are in conflict.");
-                                    strErrors.Add("   Organizer Address: " + strOrganizerAddr);
-                                    strErrors.Add("   Appt State: " + strDisplayName + " is an Attendee");
-                                    iErrors++;
+                                    if (bOrgTest)
+                                    {
+                                        bErr = true;
+                                        strErrors.Add("   ERROR: Organizer properties are in conflict.");
+                                        strErrors.Add("          Organizer Address: " + strOrganizerAddr);
+                                        strErrors.Add("          Appt State: " + strDisplayName + " is an Attendee");
+                                        iErrors++;
+                                    }
+                                    else
+                                    {
+                                        bWarn = true;
+                                        strErrors.Add("   WARNING: Organizer properties might be in conflict.");
+                                        strErrors.Add("            Organizer Address: " + strOrganizerAddr);
+                                        strErrors.Add("            Appt State: " + strDisplayName + " is an Attendee");
+                                        strErrors.Add("            If the address above is NOT a proxyAddress for " + strDisplayName + " then all is good.");
+                                        iWarn++;
+                                    }
                                 }
                             }
                             break;
@@ -337,6 +413,58 @@ namespace CalVerifier
                 }
             }
 
+            // Duplicate GlobalObjectID check
+            string strGOIDs = strGlobalObjID + "," + strCleanGlobalObjID + "," + strSubject + "," + strStartWhole + "," + strEndWhole;
+            if (strGOIDCheck.Count > 0)
+            {
+                bool bAdd = true;
+
+                foreach (string str in strGOIDCheck)
+                {
+                    string strGOID = str.Split(',')[0];
+                    string strCleanGOID = str.Split(',')[1];
+                    string strSubj = str.Split(',')[2];
+                    string strStart = str.Split(',')[3];
+                    string strEnd = str.Split(',')[4];
+
+                    if (strGOID == strGlobalObjID && strCleanGOID == strCleanGlobalObjID)
+                    {
+                        bErr = true;
+                        strErrors.Add("   ERROR: Duplicate GlobalObjectID properties detected on two items.");
+                        strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                        strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
+                        iErrors++;
+                        bAdd = false;
+                    }
+                    else if (strGOID == strGlobalObjID)
+                    {
+                        bErr = true;
+                        strErrors.Add("   ERROR: Duplicate GlobalObjectID prop detected on two items.");
+                        strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                        strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
+                        iErrors++;
+                        bAdd = false;
+                    }
+                    else if (strCleanGOID == strCleanGlobalObjID)
+                    {
+                        bErr = true;
+                        strErrors.Add("   ERROR: Duplicate CleanGlobalObjectID prop detected on two items.");
+                        strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                        strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
+                        iErrors++;
+                        bAdd = false;
+                    }
+                }
+                if (bAdd)
+                {
+                    strGOIDCheck.Add(strGOIDs);
+                }
+            }
+            else
+            {
+                strGOIDCheck.Add(strGOIDs);
+            }
+
             if (bErr || bWarn)
             {
                 outLog.WriteLine(strLogItem);
@@ -345,6 +473,7 @@ namespace CalVerifier
                 {
                     outLog.WriteLine(strLine);
                 }
+                outLog.WriteLine("");
             } 
 
             // Move items to CalVerifier folder if error is flagged and in "move" mode
@@ -352,6 +481,35 @@ namespace CalVerifier
             {
                 appt.Move(fldCalVerifier.Id);
             }
+        }
+
+        private static List<string> GetRecurData(string strRecurBlob)
+        {
+            List<string> strOut = new List<string>();
+            string strInFile = strAppPath + "RBHex.txt";
+            string strOutFile = strAppPath + "RBRead.txt";
+
+            CreateHexFile(strRecurBlob, strInFile);
+            RunMrMAPI(string.Format("-p 2 -i \"{0}\" -o \"{1}\"", strInFile, strOutFile));
+
+            StreamReader srIn = new StreamReader(strOutFile);
+            string strLine = "";
+            while ((strLine = srIn.ReadLine()) != null)
+            {
+                strOut.Add(strLine);
+            }
+            srIn.Close();
+
+            if (File.Exists(strOutFile))
+            {
+                File.Delete(strOutFile);
+            }
+            if (File.Exists(strInFile))
+            {
+                File.Delete(strInFile);
+            }
+
+            return strOut;
         }
 
         // Populate the property values for each of the props the app checks on.
@@ -364,7 +522,6 @@ namespace CalVerifier
             string strGUID = "";
             string strValue = "";
             string strType = "";
-            string strKeywords;
 
             foreach (ExtendedProperty extProp in appt.ExtendedProperties)
             {
@@ -550,11 +707,6 @@ namespace CalVerifier
                     case "PidLidIsException":
                         {
                             strIsException = strValue;
-                            break;
-                        }
-                    case "Keywords":
-                        {
-                            strKeywords = strValue;
                             break;
                         }
                     case "dispidTimeZoneStruct":

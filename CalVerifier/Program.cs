@@ -86,8 +86,15 @@ namespace CalVerifier
             Console.WriteLine();
             
             AuthenticationResult authResult = GetToken();
-            exService.Credentials = new OAuthCredentials(authResult.AccessToken);
-            strAcct = authResult.UserInfo.DisplayableId;
+            if (authResult != null)
+            {
+                exService.Credentials = new OAuthCredentials(authResult.AccessToken);
+                strAcct = authResult.UserInfo.DisplayableId;
+            }
+            else
+            {
+                return;
+            }
             strTenant = strAcct.Split('@')[1];
             exService.Url = new Uri(strSrvURI + "/ews/exchange.asmx");
 
@@ -106,13 +113,15 @@ namespace CalVerifier
                 {
                     CreateLogFile();
                     LogInfo();
+                    strDupCheck = new List<string>();
+                    strGOIDCheck = new List<string>();
                     ncCol = DoResolveName(strSMTP);
                     if (ncCol == null)
                     {
                         // Didn't get a NameResCollection, so error out.
                         Console.WriteLine("");
                         Console.WriteLine("Exiting the program.");
-                        return;
+                        return;  // need to just skip to the next one here...
                     }
 
                     if (ncCol[0].Contact != null)
@@ -133,7 +142,7 @@ namespace CalVerifier
                         string strCount = CalItems.Count.ToString();
                         DisplayAndLog("Found " + strCount + " items");
                         DisplayAndLog("");
-                        Console.Write("Processing items...");
+                        Console.WriteLine("Processing items...");
                     }
                     else
                     {
@@ -168,7 +177,7 @@ namespace CalVerifier
                         File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
                     }
                     File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
-
+                    ResetGlobals();
                 }
                 Console.WriteLine("");
                 Console.WriteLine("Please check " + strAppPath + " for the CalVerifier logs.");
@@ -177,6 +186,8 @@ namespace CalVerifier
             {
                 CreateLogFile();
                 LogInfo();
+                strDupCheck = new List<string>();
+                strGOIDCheck = new List<string>();
                 ncCol = DoResolveName(strAcct);
                 if (ncCol == null)
                 {

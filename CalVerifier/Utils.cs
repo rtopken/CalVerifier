@@ -14,8 +14,6 @@ namespace CalVerifier
         // So I can get to the service object from wherever...
         public static ExchangeService exService;
 
-        public static string strMrMAPIFile;
-
         public static void ShowInfo()
         {
             Console.WriteLine("");
@@ -30,7 +28,7 @@ namespace CalVerifier
             Console.WriteLine("CalVerifier [-L <filename>] [-M] [-V] [-?]");
             Console.WriteLine("");
             Console.WriteLine("-L   [List mode. Requires a file with SMTP addresses of mailboxes to check - one SMTP address per line.]");
-            Console.WriteLine("-M   [Move mode. Will move problem items out to a folder called CalVerifier.]");
+            Console.WriteLine("-M   [Move mode. Will move problem items out of the Calendar to a folder called CalVerifier in the Mailbox.]");
             Console.WriteLine("-V   [Verbose. Will output tracing information.]");
             Console.WriteLine("-?   [Shows this usage information.]");
             Console.WriteLine("");
@@ -66,14 +64,13 @@ namespace CalVerifier
         }
 
         // create a hex blob text file for use with MrMAPI
-        public static void CreateHexFile(string strHex, string strName)
+        public static void CreateHexFile(string strHex, string strFileName)
         {
-            strMrMAPIFile = strAppPath + strName;
-            if (File.Exists(strMrMAPIFile))
+            if (File.Exists(strFileName))
             {
-                File.Delete(strMrMAPIFile);
+                File.Delete(strFileName);
             }
-            StreamWriter swFile = new StreamWriter(strMrMAPIFile);
+            StreamWriter swFile = new StreamWriter(strFileName);
             swFile.WriteLine(strHex);
             swFile.Close();
         }
@@ -176,21 +173,43 @@ namespace CalVerifier
         public static Folder FindFolder(string strFolder)
         {
             Folder fldSearch = null;
+            FindFoldersResults fFRes = null;
+            int iPageSize = 500;
+            int iOffset = 0;
+            bool bMore = true;
 
-            FolderView view = new FolderView(100);
+            FolderView view = new FolderView(iPageSize, iOffset, OffsetBasePoint.Beginning);
             view.PropertySet = new PropertySet(BasePropertySet.IdOnly);
             view.PropertySet.Add(FolderSchema.DisplayName);
-            view.Traversal = FolderTraversal.Deep;
-            FindFoldersResults findFolderResults = exService.FindFolders(WellKnownFolderName.Root, view);
-            //find specific folder
-            foreach (Folder fld in findFolderResults)
+            view.Traversal = FolderTraversal.Shallow;   // CalVerifier should be a direct child of MsgFolderRoot so Shallow should get it
+
+            // go get the results and find our folder
+            while (bMore)
             {
-                //show folderId of the folder "test"
-                if (fld.DisplayName == strFolder)
+                fFRes = exService.FindFolders(WellKnownFolderName.MsgFolderRoot, view);
+                foreach (Folder fld in fFRes)
                 {
-                    fldSearch = fld;
-                }    
+                    if (fld.DisplayName == strFolder)
+                    {
+                        fldSearch = fld;
+                        break;
+                    }
+                }
+                // break out of the while loop if we got the folder
+                if (fldSearch != null)
+                {
+                    break;
+                }
+                else
+                {
+                    bMore = fFRes.MoreAvailable;
+                    if (bMore)
+                    {
+                        view.Offset += iPageSize;
+                    }
+                }
             }
+
             return fldSearch;
         }
 

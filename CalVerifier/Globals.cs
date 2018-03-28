@@ -25,12 +25,13 @@ namespace CalVerifier
         public static DateTime dtMin = DateTime.Parse("01/01/1601 00:00");
         public static DateTime dtMax = DateTime.Parse("12/31/4500 11:59");
         public static DateTime dtNone = DateTime.Parse("01/01/4501 00:00");
-        public static string[] rgstrProxyAddresses;
+        public static List<string> rgstrProxyAddresses = null;
         public static string strDisplayName = "";
         public static string strSMTPAddr = "";
         public static string strLogFile;
         public static StreamWriter outLog;
-        public static List<string> strDupCheck = new List<string>();
+        public static List<string> strDupCheck = null;
+        public static List<string> strGOIDCheck = null;
         public static int iRecurItems = 0;
         public static Folder fldCalVerifier = null;
         public static int iCheckedItems = 0;
@@ -44,12 +45,15 @@ namespace CalVerifier
 
         public static void ResetGlobals()
         {
-            bListMode = false;
-            bMoveItems = false;
-            bVerbose = false;
-            strListFile = "";
-            strAppPath = "";
-            rgstrMBX = null;
+            iErrors = 0;
+            iWarn = 0;
+            rgstrProxyAddresses = null;
+            strDisplayName = "";
+            strSMTPAddr = "";
+            strDupCheck = null;
+            strGOIDCheck = null;
+            iRecurItems = 0;
+            iCheckedItems = 0;
         }
 
         public static string[] calMsgClasses = new string[]
