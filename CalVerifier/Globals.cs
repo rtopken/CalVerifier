@@ -25,6 +25,8 @@ namespace CalVerifier
         public static DateTime dtMin = DateTime.Parse("01/01/1601 00:00");
         public static DateTime dtMax = DateTime.Parse("12/31/4500 11:59");
         public static DateTime dtNone = DateTime.Parse("01/01/4501 00:00");
+        public static DateTime dtOld = DateTime.Parse("01/01/1990 00:00");
+        public static DateTime dtFuture = DateTime.Parse("12/31/2099 11:59");
         public static List<string> rgstrProxyAddresses = null;
         public static string strDisplayName = "";
         public static string strSMTPAddr = "";

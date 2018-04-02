@@ -282,6 +282,38 @@ namespace CalVerifier
                 }
             }
 
+            if (dtStart < dtOld)
+            {
+                if (!(strAllDay.ToUpper() == "TRUE"))
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Start time set previous to 1990.");
+                    iErrors++;
+                }
+                else
+                {
+                    bWarn = true;
+                    strErrors.Add("   WARNING: All day event set with event date before 1990.");
+                    iWarn++;
+                }
+            }
+
+            if (dtStart > dtFuture)
+            {
+                if (!(strAllDay.ToUpper() == "TRUE"))
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Start time set after the year 2100.");
+                    iErrors++;
+                }
+                else
+                {
+                    bWarn = true;
+                    strErrors.Add("   WARNING: All day event set with event date after 2100.");
+                    iWarn++;
+                }
+            }
+
             if (string.IsNullOrEmpty(strSenderName))
             {
                 if (int.Parse(strApptStateFlags) > 0) // if no Sender Name AND this is a meeting then that's bad.
