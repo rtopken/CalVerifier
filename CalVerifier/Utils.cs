@@ -241,25 +241,25 @@ namespace CalVerifier
             // zero >> t1 same as t2
             //greater than 0 >> t1 is later than t2
 
-            iComp = DateTime.Compare(dtCheck, Globals.dtMin);
-            if (iComp <= 0)
+            iComp = DateTime.Compare(dtCheck, dtMin);
+            if (iComp < 0)
             {
                 return true;
             }
 
-            iComp = DateTime.Compare(dtCheck, Globals.dtMax);
-            if (iComp >= 0)
+            iComp = DateTime.Compare(dtCheck, dtMax);
+            if (iComp > 0)
             {
                 return true;
             }
 
-            iComp = DateTime.Compare(dtCheck, Globals.dtNone);
-            if (iComp >= 0)
+            iComp = DateTime.Compare(dtCheck, dtNone);
+            if (iComp > 0)
             {
                 return true;
             }
 
-            if (dtCheck <= DateTime.MinValue || dtCheck >= DateTime.MaxValue)  // these are probably different from the Outlook boundary values
+            if (dtCheck < DateTime.MinValue || dtCheck > DateTime.MaxValue)  // these are probably different from the Outlook boundary values
             {
                 return true;
             }

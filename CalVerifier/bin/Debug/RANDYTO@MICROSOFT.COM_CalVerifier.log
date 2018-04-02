@@ -4,7 +4,13 @@ CalVerifier
 Checks Calendars for potential problem items and reports them.
 
 Processing Calendar for Randy Topken
-Found 2806 items
+Found 2813 items
+
+Problem item: Mail and Calendar Spec Reviews [Block] | Conf Room 32/15 (20) Video + Skype| 4/17/2018 8:00:00 PM | 4/17/2018 11:00:00 PM
+   ERROR: Recurrence End Time is set to an invalid value.
+
+Problem item: Mail and Calendar Spec Reviews [Block] | Conf Room 32/15 (20) Video + Skype| 4/3/2018 8:00:00 PM | 4/3/2018 11:00:00 PM
+   ERROR: Recurrence End Time is set to an invalid value.
 
 Problem item: Come celebrate 1,000,000+ OffCAT downloads! | Catawba AP1/2365 or REDW-C/1043 | 7/26/2016 6:00:00 PM | 7/26/2016 7:00:00 PM
    ERROR: Duplicate GlobalObjectID properties detected on two items.
@@ -281,6 +287,6 @@ Problem item: Canceled: MS | RIM CDO sync up | phone: 866.500.6738, passcode: 64
 
 
 ===============================================================
-Checked 2806 items.
-Found 8 errors and 40 warnings.
+Checked 2813 items.
+Found 10 errors and 40 warnings.
 ===============================================================

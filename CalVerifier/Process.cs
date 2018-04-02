@@ -45,6 +45,17 @@ namespace CalVerifier
         public static string strTZDefEnd = "";                //dispidApptTZDefEndDisplay
         public static string strTZDefRecur = "";              //dispidApptTZDefRecur
         public static string strPropDefStream = "";           //dispidPropDefStream
+        // data from the Recurrence Blob
+        public static string strRecurBlobType = "";
+        public static string strRecurNumOccurs = "";
+        public static string strRecurStartDate = "";
+        public static string strRecurStartTime = "";
+        public static string strRecurEndDate = "";
+        public static string strRecurEndTime = "";
+        public static string strRecurExceptCount = "";
+        public static string strRecurDelInstCount = "";
+        public static string strRecurModInstCount = "";
+
 
         // Test this Calendar Item's properties.
         public static void ProcessItem(Appointment appt)
@@ -59,11 +70,6 @@ namespace CalVerifier
                 outLog.WriteLine("Checking item " + iCheckedItems+1 + ": " + strSubject + " | " + strStartWhole + "|" + strEndWhole);
             }
 
-            List<string> strErrors = new List<string>();
-            bool bErr = false;
-            bool bWarn = false;
-            bool bOrgTest = true;
-            
             foreach (string strVal in appt.Categories)
             {
                 if (strVal.ToUpper() == "HOLIDAY")
@@ -72,11 +78,42 @@ namespace CalVerifier
                 }
             }
 
-            //get other types of values as needed from the string values
-            DateTime dtStart = DateTime.Parse(strStartWhole);
-            DateTime dtEnd = DateTime.Parse(strEndWhole);
-            DateTime dtCreate = DateTime.Parse(strCreateTime);
-            List<string> strRecurData = null;
+            List<string> strErrors = new List<string>();
+            bool bErr = false;
+            bool bWarn = false;
+            bool bOrgTest = true;
+            DateTime dtStart = DateTime.MinValue;
+            DateTime dtEnd = DateTime.MinValue;
+            int iDel = 0;
+            int iMod = 0;
+            int iExcept = 0;
+            string strRecurStart = "";
+            string strRecurEnd = "";
+            DateTime dtRecurStart = DateTime.MinValue;
+            DateTime dtRecurEnd = DateTime.MinValue;
+            
+            // parse the recurrence blob and get useful stuff out of it
+            if (!string.IsNullOrEmpty(strRecurBlob))
+            {
+                GetRecurData(strRecurBlob);
+                if (!(string.IsNullOrEmpty(strRecurDelInstCount) && !(string.IsNullOrEmpty(strRecurModInstCount))))
+                {
+                    iDel = int.Parse(strRecurDelInstCount);
+                    iMod = int.Parse(strRecurModInstCount);
+                    iExcept = iDel - iMod;
+                    strRecurExceptCount = iExcept.ToString();
+                }
+                if (!(string.IsNullOrEmpty(strRecurStartDate) && !(string.IsNullOrEmpty(strRecurStartTime))))
+                {
+                    strRecurStart = strRecurStartDate + " " + strRecurStartTime;
+                    dtRecurStart = DateTime.Parse(strRecurStart);
+                }
+                if (!(string.IsNullOrEmpty(strRecurEndDate) && !(string.IsNullOrEmpty(strRecurEndTime))))
+                {
+                    strRecurEnd = strRecurEndDate + " " + strRecurEndTime;
+                    dtRecurEnd = DateTime.Parse(strRecurEnd);
+                }
+            }
 
             // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
             NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
@@ -91,17 +128,83 @@ namespace CalVerifier
                 strOrganizerSMTP = strOrganizerAddr;
             }
 
-            // parse the recurrence blob and get useful stuff out of it
-            if (!string.IsNullOrEmpty(strRecurBlob))
-            {
-                strRecurData = GetRecurData(strRecurBlob);
-
-                // strRecurData is the readable recurrence data stored in a List<string>
-
-
-            }
 
             // now really actually start testing props
+
+            if (string.IsNullOrEmpty(strSubject))
+            {
+                bWarn = true;
+                strErrors.Add("   WARNING: Subject is empty/missing.");
+                iWarn++;
+                strSubject = "";
+            }
+
+            if (string.IsNullOrEmpty(strEndWhole))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required End Time property.");
+                iErrors++;
+            }
+            else // not empty/missing, but might still have problems
+            {
+                dtEnd = DateTime.Parse(strEndWhole);
+
+                if (TimeCheck(dtEnd))
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: End Time is not set correctly.");
+                    iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strStartWhole))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Start Time property.");
+                iErrors++;
+            }
+            else // not empty/missing, but might still have problems
+            {
+                dtStart = DateTime.Parse(strStartWhole);
+
+                if (dtEnd < dtStart)
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Start Time is greater than the End Time.");
+                    iErrors++;
+                }
+
+                if (TimeCheck(dtStart))
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Start Time is set to an invalid value.");
+                    iErrors++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(strOrganizerAddr))
+            {
+                if (int.Parse(strApptStateFlags) > 0) // if no Organizer Address AND this is a meeting then that's bad.
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Missing required Organizer Address property.");
+                    iErrors++;
+                }
+                strOrganizerAddr = "";
+            }
+
+            if (string.IsNullOrEmpty(strRecurring))
+            {
+                bErr = true;
+                strErrors.Add("   ERROR: Missing required Recurring property.");
+                iErrors++;
+                strRecurring = "MISSING";
+            }
+
+            if (string.IsNullOrEmpty(strLocation))
+            {
+                strLocation = "";
+            }
 
             // check for duplicate calendar items
             string strDupLine = strSubject + "," + strLocation + "," + strOrganizerAddr + "," + strRecurring + "," + strStartWhole + "," + strEndWhole;
@@ -133,15 +236,6 @@ namespace CalVerifier
                 strDupCheck.Add(strDupLine);
             }
 
-            
-
-            if (string.IsNullOrEmpty(strSubject))
-            {
-                bWarn = true;
-                strErrors.Add("   WARNING: Subject is empty/missing.");
-                iWarn++;
-            }
-            
             if (string.IsNullOrEmpty(strDeliveryTime))
             {
                 bErr = true;
@@ -149,79 +243,42 @@ namespace CalVerifier
                 iErrors++;
             }
 
-            if (string.IsNullOrEmpty(strRecurring))
+            // Do some tests if the item is a recurring item
+            if (strRecurring.ToUpper() == "TRUE")
             {
-                bErr = true;
-                strErrors.Add("   ERROR: Missing required Recurring property.");
-                iErrors++;
-            }
-            else
-            {
-                if (strRecurring.ToUpper() == "TRUE")
-                {
-                    iRecurItems++;
-                    if (iRecurItems == 1299)
-                    {
-                        bErr = true;
-                        strErrors.Add("   ERROR: Reached limit of 1300 Recurring Appointments. Delete some older recurring appointments to correct this.");
-                        iErrors++;
-                    }
-                    if (iRecurItems == 1250)
-                    {
-                        bWarn = true;
-                        strErrors.Add("   WARNING: Approaching limit of 1300 Recurring Appointments. Delete some older recurring appointments to correct this.");
-                        iWarn++;
-                    }
-                }
-            }
-
-            if (string.IsNullOrEmpty(strStartWhole))
-            {
-                bErr = true;
-                strErrors.Add("   ERROR: Missing required Start Time property.");
-                iErrors++;
-            }
-            else // not empty/missing, but might still have problems
-            {
-                if (dtEnd < dtStart)
+                if (iMod > iDel)
                 {
                     bErr = true;
-                    strErrors.Add("   ERROR: Start Time is greater than the End Time.");
+                    strErrors.Add("   ERROR: Recurrence Data is corrupt.");
                     iErrors++;
                 }
 
-                if (TimeCheck(dtStart))  
+                if (TimeCheck(dtRecurStart))
                 {
                     bErr = true;
-                    strErrors.Add("   ERROR: Start Time is not set correctly."); 
+                    strErrors.Add("   ERROR: Recurrence Start Time is set to an invalid value.");
                     iErrors++;
                 }
-            }
 
-            if (string.IsNullOrEmpty(strEndWhole))
-            {
-                bErr = true;
-                strErrors.Add("   ERROR: Missing required End Time property.");
-                iErrors++;
-            }
-            else // not empty/missing, but might still have problems
-            {
-
-                if (TimeCheck(dtEnd))
+                if (TimeCheck(dtRecurEnd))
                 {
                     bErr = true;
-                    strErrors.Add("   ERROR: End Time is not set correctly.");
+                    strErrors.Add("   ERROR: Recurrence End Time is set to an invalid value.");
                     iErrors++;
                 }
-            }
 
-            if (string.IsNullOrEmpty(strOrganizerAddr))
-            {
-                if (int.Parse(strApptStateFlags) > 0) // if no Organizer Address AND this is a meeting then that's bad.
+                iRecurItems++;
+                if (iRecurItems == 1299)
                 {
                     bErr = true;
-                    strErrors.Add("   ERROR: Missing required Organizer Address property.");
+                    strErrors.Add("   ERROR: Reached limit of 1300 Recurring Appointments. Delete some older recurring appointments to correct this.");
                     iErrors++;
+                }
+                if (iRecurItems == 1250)
+                {
+                    bWarn = true;
+                    strErrors.Add("   WARNING: Approaching limit of 1300 Recurring Appointments. Delete some older recurring appointments to correct this.");
+                    iWarn++;
                 }
             }
 
@@ -274,10 +331,17 @@ namespace CalVerifier
                     else
                     {
                         bWarn = true;
-                        strErrors.Add("   WARNING: Unknown or incorrect Message Class " + strMsgClass + " is set on this item.");
+                        strErrors.Add("   WARNING: Unknown Message Class " + strMsgClass + " is set on this item.");
                         iWarn++;
                     }
                 }
+            }
+
+            if (iExcept >= 25)
+            {
+                bWarn = true;
+                strErrors.Add("   WARNING: Meeting has " + strRecurExceptCount + " exceptions which may indicate a problematic long-running recurring meeting.");
+                iWarn++;
             }
 
             if (!(string.IsNullOrEmpty(strMsgSize)))
@@ -465,6 +529,10 @@ namespace CalVerifier
                 strGOIDCheck.Add(strGOIDs);
             }
 
+            // 
+            // Now do the reporting and moving of items as needed
+            //
+
             if (bErr || bWarn)
             {
                 outLog.WriteLine(strLogItem);
@@ -483,9 +551,8 @@ namespace CalVerifier
             }
         }
 
-        private static List<string> GetRecurData(string strRecurBlob)
+        private static void GetRecurData(string strRecurBlob)
         {
-            List<string> strOut = new List<string>();
             string strInFile = strAppPath + "RBHex.txt";
             string strOutFile = strAppPath + "RBRead.txt";
 
@@ -496,7 +563,49 @@ namespace CalVerifier
             string strLine = "";
             while ((strLine = srIn.ReadLine()) != null)
             {
-                strOut.Add(strLine);
+                if (strLine.StartsWith("EndType:"))
+                {
+                    if (strLine.Contains("IDC_RCEV_PAT_ERB_NOEND"))
+                    {
+                        strRecurBlobType = "NoEndDate";
+                    }
+                    if (strLine.Contains("IDC_RCEV_PAT_ERB_END"))
+                    {
+                        strRecurBlobType = "EndSpecificDate";
+                    }
+                    if (strLine.Contains("IDC_RCEV_PAT_ERB_AFTERNOCCUR"))
+                    {
+                        strRecurBlobType = "EndNumberOccur";
+                    }
+                }
+                if (strLine.StartsWith("OccurrenceCount:"))
+                {
+                    strRecurNumOccurs = strLine.Substring(strLine.LastIndexOf('=') + 2);
+                }
+                if (strLine.StartsWith("DeletedInstanceCount:"))
+                {
+                    strRecurDelInstCount = strLine.Substring(strLine.LastIndexOf('=') + 2);
+                }
+                if (strLine.StartsWith("ModifiedInstanceCount:"))
+                {
+                    strRecurModInstCount = strLine.Substring(strLine.LastIndexOf('=') + 2);
+                }
+                if (strLine.StartsWith("StartDate:"))
+                {
+                    strRecurStartDate = strLine.Substring(strLine.LastIndexOf('M') + 2);
+                }
+                if (strLine.StartsWith("EndDate:"))
+                {
+                    strRecurEndDate = strLine.Substring(strLine.LastIndexOf('M') + 2);
+                }
+                if (strLine.StartsWith("StartTimeOffset:"))
+                {
+                    strRecurStartTime = GetTimeFromString(strLine);
+                }
+                if (strLine.StartsWith("EndTimeOffset:"))
+                {
+                    strRecurEndTime = GetTimeFromString(strLine);
+                }
             }
             srIn.Close();
 
@@ -508,8 +617,22 @@ namespace CalVerifier
             {
                 File.Delete(strInFile);
             }
+        }
 
-            return strOut;
+        private static string GetTimeFromString(string str)
+        {
+            int iEquals = 0;
+            int iM = 0;
+            int iLength = 0;
+            string strTime = "";
+
+            iEquals = str.LastIndexOf('=');
+            iM = str.LastIndexOf('M');
+            iLength = (iM - (iEquals + 1));
+
+            strTime = str.Substring(iEquals + 2, iLength);
+
+            return strTime;
         }
 
         // Populate the property values for each of the props the app checks on.
