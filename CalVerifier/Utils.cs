@@ -247,12 +247,6 @@ namespace CalVerifier
                 return true;
             }
 
-            iComp = DateTime.Compare(dtCheck, dtMax);
-            if (iComp > 0)
-            {
-                return true;
-            }
-
             iComp = DateTime.Compare(dtCheck, dtNone);
             if (iComp > 0)
             {
