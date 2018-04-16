@@ -238,9 +238,12 @@ namespace CalVerifier
 
             if (string.IsNullOrEmpty(strDeliveryTime))
             {
-                bErr = true;
-                strErrors.Add("   ERROR: Missing required Delivery Time property.");
-                iErrors++;
+                if (int.Parse(strApptStateFlags) > 0) // single Appt might not need Delivery time.
+                {
+                    bErr = true;
+                    strErrors.Add("   ERROR: Missing required Delivery Time property.");
+                    iErrors++;
+                }
             }
 
             // Do some tests if the item is a recurring item
@@ -509,57 +512,85 @@ namespace CalVerifier
                 }
             }
 
-            // Duplicate GlobalObjectID check
-            string strGOIDs = strGlobalObjID + "," + strCleanGlobalObjID + "," + strSubject + "," + strStartWhole + "," + strEndWhole;
-            if (strGOIDCheck.Count > 0)
+            // GlobalObjectID check
+            if (int.Parse(strApptStateFlags) > 0) /// Global Obj IDs count when it's an actual Meeting, not single Appt.
             {
                 bool bAdd = true;
 
-                foreach (string str in strGOIDCheck)
+                if (string.IsNullOrEmpty(strGlobalObjID))
                 {
-                    string strGOID = str.Split(',')[0];
-                    string strCleanGOID = str.Split(',')[1];
-                    string strSubj = str.Split(',')[2];
-                    string strStart = str.Split(',')[3];
-                    string strEnd = str.Split(',')[4];
+                    bErr = true;
+                    strErrors.Add("   ERROR: No GlobalObjectID property detected on this meeting item.");
+                    iErrors++;
+                }
 
-                    if (strGOID == strGlobalObjID && strCleanGOID == strCleanGlobalObjID)
-                    {
-                        bErr = true;
-                        strErrors.Add("   ERROR: Duplicate GlobalObjectID properties detected on two items.");
-                        strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
-                        strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
-                        iErrors++;
-                        bAdd = false;
-                    }
-                    else if (strGOID == strGlobalObjID)
-                    {
-                        bErr = true;
-                        strErrors.Add("   ERROR: Duplicate GlobalObjectID prop detected on two items.");
-                        strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
-                        strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
-                        iErrors++;
-                        bAdd = false;
-                    }
-                    else if (strCleanGOID == strCleanGlobalObjID)
-                    {
-                        bErr = true;
-                        strErrors.Add("   ERROR: Duplicate CleanGlobalObjectID prop detected on two items.");
-                        strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
-                        strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
-                        iErrors++;
-                        bAdd = false;
-                    }
-                }
-                if (bAdd)
+                if (string.IsNullOrEmpty(strCleanGlobalObjID))
                 {
-                    strGOIDCheck.Add(strGOIDs);
+                    bErr = true;
+                    strErrors.Add("   ERROR: No CleanGlobalObjectID property detected on this meeting item.");
+                    iErrors++;
+                }
+
+                if (!(string.IsNullOrEmpty(strGlobalObjID)) || (!(string.IsNullOrEmpty(strCleanGlobalObjID))))
+                {
+                    string strGOIDs = strGlobalObjID + "," + strCleanGlobalObjID + "," + strSubject + "," + strStartWhole + "," + strEndWhole;
+
+                    if (strGOIDCheck.Count > 0)
+                    {
+                        foreach (string str in strGOIDCheck)
+                        {
+                            string strGOID = str.Split(',')[0];
+                            string strCleanGOID = str.Split(',')[1];
+                            string strSubj = str.Split(',')[2];
+                            string strStart = str.Split(',')[3];
+                            string strEnd = str.Split(',')[4];
+
+                            if (strGOID == strGlobalObjID && strCleanGOID == strCleanGlobalObjID)
+                            {
+                                bErr = true;
+                                strErrors.Add("   ERROR: Duplicate GlobalObjectID properties detected on two items.");
+                                strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                                strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
+                                iErrors++;
+                                bAdd = false;
+                            }
+                            else if (strGOID == strGlobalObjID)
+                            {
+                                if (!(string.IsNullOrEmpty(strGlobalObjID)))
+                                {
+                                    bErr = true;
+                                    strErrors.Add("   ERROR: Duplicate GlobalObjectID prop detected on two items.");
+                                    strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                                    strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
+                                    iErrors++;
+                                }
+                                bAdd = false;
+                            }
+                            else if (strCleanGOID == strCleanGlobalObjID)
+                            {
+                                if (!(string.IsNullOrEmpty(strCleanGlobalObjID)))
+                                {
+                                    bErr = true;
+                                    strErrors.Add("   ERROR: Duplicate CleanGlobalObjectID prop detected on two items.");
+                                    strErrors.Add("          This item: " + strSubject + " | " + strStartWhole + " | " + strEndWhole);
+                                    strErrors.Add("          Other item: " + strSubj + " | " + strStart + " | " + strEnd);
+                                    iErrors++;
+                                }
+                                bAdd = false;
+                            }
+                        }
+                        if (bAdd)
+                        {
+                            strGOIDCheck.Add(strGOIDs);
+                        }
+                    }
+                    else
+                    {
+                        strGOIDCheck.Add(strGOIDs);
+                    }
                 }
             }
-            else
-            {
-                strGOIDCheck.Add(strGOIDs);
-            }
+            
 
             // 
             // Now do the reporting and moving of items as needed
@@ -581,6 +612,56 @@ namespace CalVerifier
             {
                 appt.Move(fldCalVerifier.Id);
             }
+
+            ResetProps(); // reset the properties for each item.
+        }
+
+
+        private static void ResetProps()
+        {
+            strSubject = "";                 //PR_SUBJECT
+            strOrganizerName = "";           //PR_SENT_REPRESENTING_NAME_W
+            strOrganizerAddr = "";           //PR_SENT_REPRESENTING_EMAIL_ADDRESS_W 
+            strOrganizerAddrType = "";       //PR_SENT_REPRESENTING_ADDRTYPE_W
+            strSenderName = "";              //PR_SENDER_NAME_W
+            strSenderAddr = "";              //PR_SENDER_EMAIL_ADDRESS_W
+            strMsgClass = "";                //PR_MESSAGE_CLASS
+            strLastModified = "";            //PR_LAST_MODIFICATION_TIME
+            strLastModifiedBy = "";          //PR_LAST_MODIFIER_NAME_W
+            strEntryID = "";                 //PR_ENTRYID
+            strMsgSize = "";                 //PR_MESSAGE_SIZE 
+            strDeliveryTime = "";            //PR_MESSAGE_DELIVERY_TIME
+            strHasAttach = "";               //PR_HASATTACH
+            strMsgStatus = "";               //PR_MSG_STATUS
+            strCreateTime = "";              //PR_CREATION_TIME
+            strRecurring = "";               //dispidRecurring
+            strRecurType = "";               //dispidRecurType
+            strStartWhole = "";              //dispidApptStartWhole
+            strEndWhole = "";                //dispidApptEndWhole
+            strApptStateFlags = "";          //dispidApptStateFlags
+            strLocation = "";                //dispidLocation
+            strTZDesc = "";                  //dispidTimeZoneDesc
+            strAllDay = "";                  //dispidApptSubType
+            strRecurBlob = "";               //dispidApptRecur
+            strIsRecurring = "";             //PidLidIsRecurring
+            strGlobalObjID = "";             //PidLidGlobalObjectId
+            strCleanGlobalObjID = "";        //PidLidCleanGlobalObjectId
+            strAuxFlags = "";                //dispidApptAuxFlags
+            strIsException = "";             //PidLidIsException
+            strTZStruct = "";                //dispidTimeZoneStruct
+            strTZDefStart = "";              //dispidApptTZDefStartDisplay
+            strTZDefEnd = "";                //dispidApptTZDefEndDisplay
+            strTZDefRecur = "";              //dispidApptTZDefRecur
+            strPropDefStream = "";           //dispidPropDefStream
+            strRecurBlobType = "";
+            strRecurNumOccurs = "";
+            strRecurStartDate = "";
+            strRecurStartTime = "";
+            strRecurEndDate = "";
+            strRecurEndTime = "";
+            strRecurExceptCount = "";
+            strRecurDelInstCount = "";
+            strRecurModInstCount = "";
         }
 
         private static void GetRecurData(string strRecurBlob)
