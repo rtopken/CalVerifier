@@ -115,17 +115,25 @@ namespace CalVerifier
                 }
             }
 
-            // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
-            NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
             string strOrganizerSMTP = "";
-            if (ncCol.Count > 0 && !string.IsNullOrEmpty(ncCol[0].Mailbox.Address))
+            // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
+            if (!(string.IsNullOrEmpty(strOrganizerAddr)))
             {
-                strOrganizerSMTP = ncCol[0].Mailbox.Address;
+                NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
+                
+                if (ncCol.Count > 0 && !string.IsNullOrEmpty(ncCol[0].Mailbox.Address))
+                {
+                    strOrganizerSMTP = ncCol[0].Mailbox.Address;
+                }
+                else
+                {
+                    bOrgTest = false;
+                    strOrganizerSMTP = strOrganizerAddr;
+                }
             }
             else
             {
-                bOrgTest = false;
-                strOrganizerSMTP = strOrganizerAddr;
+                strOrganizerAddr = "";
             }
 
 
@@ -531,7 +539,7 @@ namespace CalVerifier
                     iErrors++;
                 }
 
-                if (!(string.IsNullOrEmpty(strGlobalObjID)) || (!(string.IsNullOrEmpty(strCleanGlobalObjID))))
+                if (!(string.IsNullOrEmpty(strGlobalObjID)) || (!(string.IsNullOrEmpty(strCleanGlobalObjID)))) // if both are empty then don't bother testing
                 {
                     string strGOIDs = strGlobalObjID + "," + strCleanGlobalObjID + "," + strSubject + "," + strStartWhole + "," + strEndWhole;
 
@@ -590,7 +598,6 @@ namespace CalVerifier
                     }
                 }
             }
-            
 
             // 
             // Now do the reporting and moving of items as needed
