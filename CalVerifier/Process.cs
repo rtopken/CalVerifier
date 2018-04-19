@@ -67,7 +67,8 @@ namespace CalVerifier
 
             if (bVerbose)
             {
-                outLog.WriteLine("Checking item " + iCheckedItems+1 + ": " + strSubject + " | " + strStartWhole + "|" + strEndWhole);
+                string strItemsChecked = (iCheckedItems + 1).ToString();
+                outLog.WriteLine("Checking item " + strItemsChecked + ": " + strSubject + " | " + strStartWhole + "|" + strEndWhole);
             }
 
             foreach (string strVal in appt.Categories)
@@ -146,6 +147,13 @@ namespace CalVerifier
                 iWarn++;
                 strSubject = "";
             }
+            else // need to remove commas for logging purposes
+            {
+                if (strSubject.Contains(","))
+                {
+                    strSubject = strSubject.Replace(',', '_');
+                }
+            }
 
             if (string.IsNullOrEmpty(strEndWhole))
             {
@@ -212,6 +220,13 @@ namespace CalVerifier
             if (string.IsNullOrEmpty(strLocation))
             {
                 strLocation = "";
+            }
+            else
+            {
+                if (strLocation.Contains(","))
+                {
+                    strLocation = strLocation.Replace(',', '_');
+                }
             }
 
             // check for duplicate calendar items

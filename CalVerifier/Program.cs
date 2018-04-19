@@ -19,6 +19,9 @@ namespace CalVerifier
             string strAcct = "";
             string strTenant = "";
             string strEmailAddr = "";
+            DateTime dtNow = DateTime.MinValue;
+            string strFileName = "";
+            string strDate = "";
 
             List<Item> CalItems = null;
 
@@ -43,17 +46,14 @@ namespace CalVerifier
                             }
                         }
                     }
-
                     if (args[i].ToUpper() == "-M" || args[i].ToUpper() == "/M") // move mode to move problem items out to the CalVerifier folder
                     {
                         bMoveItems = true;
                     }
-
                     if (args[i].ToUpper() == "-V" || args[i].ToUpper() == "/V") // include tracing, verbose mode.
                     {
                         bVerbose = true;
                     }
-
                     if (args[i].ToUpper() == "-?" || args[i].ToUpper() == "/?") // display command switch help
                     {
                         ShowHelp();
@@ -61,6 +61,8 @@ namespace CalVerifier
                     }
                 }
             }
+
+            ShowInfo();
 
             exService = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
             exService.UseDefaultCredentials = false;
@@ -70,8 +72,6 @@ namespace CalVerifier
                 exService.TraceEnabled = true;
                 exService.TraceFlags = TraceFlags.All;
             }
-
-            ShowInfo();
 
             if (bListMode)
             {
@@ -99,12 +99,6 @@ namespace CalVerifier
             exService.Url = new Uri(strSrvURI + "/ews/exchange.asmx");
 
             NameResolutionCollection ncCol = null;
-
-            // Should only do this if the switch was set.
-            if (bMoveItems)
-            {
-                CreateErrFld();
-            }
 
             if (bListMode) // List mode
             {
@@ -135,6 +129,12 @@ namespace CalVerifier
                     }
 
                     exService.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, strSMTP);
+                    // Should only do this if the switch was set.
+                    if (bMoveItems)
+                    {
+                        CreateErrFld();
+                        string strFldID = fldCalVerifier.Id.ToString();
+                    }
                     CalItems = GetCalItems(exService);
                     strSMTPAddr = strSMTP.ToUpper();
                     if (CalItems != null)
@@ -172,11 +172,16 @@ namespace CalVerifier
 
                     outLog.Close();
 
-                    if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
+                    dtNow = DateTime.Now;
+                    strDate = dtNow.ToShortDateString();
+                    strDate = strDate.Replace('/', '-');
+                    strFileName = strAppPath + strDate + "_" + strSMTPAddr + "_CalVerifier.log";
+
+                    if (File.Exists(strFileName))
                     {
-                        File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
+                        File.Delete(strFileName);
                     }
-                    File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
+                    File.Move(strLogFile, strFileName);
                     ResetGlobals();
                 }
                 Console.WriteLine("");
@@ -209,7 +214,12 @@ namespace CalVerifier
                 }
 
                 strSMTPAddr = strEmailAddr.ToUpper();
-
+                // Should only do this if the switch was set.
+                if (bMoveItems)
+                {
+                    CreateErrFld();
+                    string strFldID = fldCalVerifier.Id.ToString();
+                }
                 CalItems = GetCalItems(exService);
                 if (CalItems != null)
                 {
@@ -246,14 +256,19 @@ namespace CalVerifier
 
                 outLog.Close();
 
-                if (File.Exists(strAppPath + strSMTPAddr + "_CalVerifier.log"))
+                dtNow = DateTime.Now;
+                strDate = dtNow.ToShortDateString();
+                strDate = strDate.Replace('/', '-');
+                strFileName = strAppPath + strDate + "_" + strSMTPAddr + "_CalVerifier.log";
+
+                if (File.Exists(strFileName))
                 {
-                    File.Delete(strAppPath + strSMTPAddr + "_CalVerifier.log");
+                    File.Delete(strFileName);
                 }
-                File.Move(strLogFile, strAppPath + strSMTPAddr + "_CalVerifier.log");
+                File.Move(strLogFile, strFileName);
 
                 Console.WriteLine("");
-                Console.WriteLine("Please check " + strAppPath + " for " + strSMTPAddr + "_CalVerifier.log for more information.");
+                Console.WriteLine("Please check " + strAppPath + " for " + strDate + "_" + strSMTPAddr + "_CalVerifier.log for more information.");
             }
 
             DisplayPrivacyInfo();
@@ -313,6 +328,7 @@ namespace CalVerifier
             List<ExtendedPropertyDefinition> propSet = new List<ExtendedPropertyDefinition>();
             DoProps(ref propSet);
             cView.PropertySet = new PropertySet(BasePropertySet.FirstClassProperties);
+            cView.OrderBy.Add(ItemSchema.LastModifiedTime, SortDirection.Descending);
             foreach (PropertyDefinitionBase pdbProp in propSet)
             {
                 cView.PropertySet.Add(pdbProp);

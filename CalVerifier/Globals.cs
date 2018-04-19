@@ -56,6 +56,7 @@ namespace CalVerifier
             strGOIDCheck = null;
             iRecurItems = 0;
             iCheckedItems = 0;
+            fldCalVerifier = null;
         }
 
         public static string[] calMsgClasses = new string[]
