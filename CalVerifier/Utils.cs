@@ -32,6 +32,17 @@ namespace CalVerifier
             Console.WriteLine("-V   [Verbose. Will output tracing information.]");
             Console.WriteLine("-?   [Shows this usage information.]");
             Console.WriteLine("");
+            Console.WriteLine("Examples:");
+            Console.WriteLine("=========");
+            Console.WriteLine("Use no command line switches to run the utility against your mailbox (no impersonation):");
+            Console.WriteLine("     CalVerifier");
+            Console.WriteLine("");
+            Console.WriteLine("Run against a set of mailboxes using Impersonation (List.txt is a file with several SMTP addresses in it):");
+            Console.WriteLine("     CalVerifier -L C:\\Temp\\List.txt");
+            Console.WriteLine("");
+            Console.WriteLine("Run the utility against your mailbox and move error items:");
+            Console.WriteLine("     CalVerifier -M");
+            Console.WriteLine("");
         }
 
         public static void LogInfo()
