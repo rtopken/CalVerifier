@@ -120,7 +120,17 @@ namespace CalVerifier
             // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
             if (!(string.IsNullOrEmpty(strOrganizerAddr)))
             {
-                NameResolutionCollection ncCol = Utils.exService.ResolveName(strOrganizerAddr);
+                NameResolutionCollection ncCol = null;
+                try
+                {
+                    ncCol = Utils.exService.ResolveName(strOrganizerAddr);
+                }
+                catch (ServiceRequestException ex)
+                {
+                    strErrors.Add("   Error when attempting to resolve the name for " + strOrganizerAddr + ":");
+                    strErrors.Add("   " + ex.Message);
+                    iWarn++;
+                }
                 
                 if (ncCol.Count > 0 && !string.IsNullOrEmpty(ncCol[0].Mailbox.Address))
                 {
