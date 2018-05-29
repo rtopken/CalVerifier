@@ -199,10 +199,11 @@ namespace CalVerifier
                 strDupCheck = new List<string>();
                 strGOIDCheck = new List<string>();
                 ncCol = DoResolveName(strAcct);
-                if (ncCol == null)
+                if (ncCol == null || ncCol.Count == 0)
                 {
                     // Didn't get a NameResCollection, so error out.
                     Console.WriteLine("");
+                    Console.WriteLine("Could not resolve address " + strAcct + " against the directory.");
                     Console.WriteLine("Exiting the program.");
                     return;
                 }
