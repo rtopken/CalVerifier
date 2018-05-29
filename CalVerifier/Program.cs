@@ -22,8 +22,9 @@ namespace CalVerifier
             DateTime dtNow = DateTime.MinValue;
             string strFileName = "";
             string strDate = "";
+            bool bRet = true;
 
-            List<Item> CalItems = null;
+            //List<Item> CalItems = null;
 
             if (args.Length > 0)
             {
@@ -67,11 +68,11 @@ namespace CalVerifier
             exService = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
             exService.UseDefaultCredentials = false;
 
-            if (bVerbose)
+            /*if (bVerbose)
             {
                 exService.TraceEnabled = true;
                 exService.TraceFlags = TraceFlags.All;
-            }
+            }*/
 
             if (bListMode)
             {
@@ -110,12 +111,14 @@ namespace CalVerifier
                     strDupCheck = new List<string>();
                     strGOIDCheck = new List<string>();
                     ncCol = DoResolveName(strSMTP);
-                    if (ncCol == null)
+                    if (ncCol == null || ncCol.Count == 0)
                     {
                         // Didn't get a NameResCollection, so error out.
                         Console.WriteLine("");
+                        Console.WriteLine("Check the SMTP addresses in the list file - there was a problem resolving against the directory.");
+                        Console.WriteLine("SMTP Address: " + strSMTP);
                         Console.WriteLine("Exiting the program.");
-                        return;  // need to just skip to the next one here...
+                        return;  // look at just skipping to the next one here...
                     }
 
                     if (ncCol[0].Contact != null)
@@ -135,9 +138,10 @@ namespace CalVerifier
                         CreateErrFld();
                         string strFldID = fldCalVerifier.Id.ToString();
                     }
-                    CalItems = GetCalItems(exService);
+                    bRet = ProcessCalendar(exService);
                     strSMTPAddr = strSMTP.ToUpper();
-                    if (CalItems != null)
+
+                    /*if (CalItems != null)
                     {
                         string strCount = CalItems.Count.ToString();
                         DisplayAndLog("Found " + strCount + " items");
@@ -163,7 +167,8 @@ namespace CalVerifier
                         }
                         ProcessItem(appt);
                         iCheckedItems++;
-                    }
+                    }*/
+
                     DisplayAndLog("\r\n");
                     DisplayAndLog("===============================================================");
                     DisplayAndLog("Checked " + iCheckedItems.ToString() + " items.");
@@ -220,8 +225,9 @@ namespace CalVerifier
                     CreateErrFld();
                     string strFldID = fldCalVerifier.Id.ToString();
                 }
-                CalItems = GetCalItems(exService);
-                if (CalItems != null)
+                bRet = ProcessCalendar(exService);
+                
+                /*if (CalItems != null)
                 {
                     string strCount = CalItems.Count.ToString();
                     DisplayAndLog("Found " + strCount + " items");
@@ -247,7 +253,8 @@ namespace CalVerifier
                     }
                     ProcessItem(appt);
                     iCheckedItems++;
-                }
+                }*/
+
                 DisplayAndLog("\r\n");
                 DisplayAndLog("===============================================================");
                 DisplayAndLog("Checked " + iCheckedItems.ToString() + " items.");
@@ -298,13 +305,13 @@ namespace CalVerifier
         }
 
         // Go connect to the Calendar folder and get the calendar items
-        public static List<Item> GetCalItems(ExchangeService service)
+        public static bool ProcessCalendar(ExchangeService service)
         {
             Folder fldCal = null;
             int iOffset = 0;
             int iPageSize = 500;
             bool bMore = true;
-            List<Item> cAppts = new List<Item>();
+            //List<Item> cAppts = new List<Item>();
             FindItemsResults<Item> findResults = null;
 
             try
@@ -319,7 +326,7 @@ namespace CalVerifier
                 Console.WriteLine("Could not connect to this user's mailbox or calendar.");
                 Console.WriteLine(ex.Message);
                 Console.ResetColor();
-                return null;
+                return false;
             }
 
             // if we're in then we get here
@@ -339,9 +346,21 @@ namespace CalVerifier
             {
                 findResults = fldCal.FindItems(cView);
 
-                foreach (Item item in findResults.Items)
+                int i = 0;
+                int n = 0;
+                foreach (Appointment appt in findResults.Items)
                 {
-                    cAppts.Add(item);
+                    //cAppts.Add(item);
+                    i++;
+                    if (i % 5 == 0)
+                    {
+                        Console.SetCursorPosition(0, Console.CursorTop);
+                        Console.Write("");
+                        Console.Write(cSpin[n % 4]);
+                        n++;
+                    }
+                    ProcessItem(appt);
+                    iCheckedItems++;
                 }
 
                 bMore = findResults.MoreAvailable;
@@ -349,9 +368,10 @@ namespace CalVerifier
                 {
                     cView.Offset += iPageSize;
                 }
+
             }
 
-            return cAppts;
+            return true;
         }
     }
 }
