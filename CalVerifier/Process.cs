@@ -61,7 +61,27 @@ namespace CalVerifier
         public static void ProcessItem(Appointment appt)
         {
             // populate the values for the properties
-            GetPropsReadable(appt);
+            try
+            {
+                if (appt.Size > 0)
+                {
+                    if (bVerbose)
+                    {
+                        outLog.WriteLine("Calling to Get Readable Properties from the following item.");
+                    }
+                    GetPropsReadable(appt);
+                }
+                else
+                {
+                    DisplayAndLog("Appointment item not valid - continuing...");
+                    return;
+                }
+            }
+            catch
+            {
+                DisplayAndLog("Getting props failed or item is NULL - continuing...");
+                return;
+            }
 
             string strLogItem = "Problem item: " + strSubject + " | " + strLocation + "| " + strStartWhole + " | " + strEndWhole;
 

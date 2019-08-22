@@ -8,7 +8,6 @@ C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchan
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.xml
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.Auth.pdb
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Exchange.WebServices.Auth.xml
-C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csprojResolveAssemblyReference.cache
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csproj.CoreCompileInputs.cache
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.exe
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.pdb
@@ -20,3 +19,4 @@ C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Identi
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.dll
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.xml
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.xml
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Identity.Client.xml

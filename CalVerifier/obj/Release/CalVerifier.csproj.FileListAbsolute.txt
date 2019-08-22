@@ -15,8 +15,9 @@ C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Release\Microsoft.Exch
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Release\Microsoft.Exchange.WebServices.Auth.xml
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Release\Microsoft.IdentityModel.Clients.ActiveDirectory.xml
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Release\Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.xml
-C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Release\CalVerifier.csprojResolveAssemblyReference.cache
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Release\CalVerifier.csproj.CoreCompileInputs.cache
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Release\CalVerifier.csproj.CopyComplete
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Release\CalVerifier.exe
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Release\CalVerifier.pdb
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Release\Microsoft.Identity.Client.xml
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Release\CalVerifier.csprojAssemblyReference.cache

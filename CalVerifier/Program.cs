@@ -173,7 +173,7 @@ namespace CalVerifier
                     DisplayAndLog("===============================================================");
                     DisplayAndLog("Checked " + iCheckedItems.ToString() + " items.");
                     DisplayAndLog("Found " + iErrors.ToString() + " errors and " + iWarn.ToString() + " warnings.");
-                    DisplayAndLog("===============================================================");
+                    DisplayAndLog("===============================================================\r\n");
 
                     outLog.Close();
 
@@ -355,13 +355,41 @@ namespace CalVerifier
                     i++;
                     if (i % 5 == 0)
                     {
+                        // do a progress marker that spins | / - \
                         Console.SetCursorPosition(0, Console.CursorTop);
                         Console.Write("");
                         Console.Write(cSpin[n % 4]);
                         n++;
                     }
-                    ProcessItem(appt);
+
+                    try
+                    {
+                        if (appt.Size > 0)
+                        {
+                            if (bVerbose)
+                            {
+                                outLog.WriteLine("Calling to Process Item");
+                            }
+                            ProcessItem(appt);
+                        }
+                        else
+                        {
+                            DisplayAndLog("Encountered an invalid Appointment. Continuing...");
+                        }
+                    }
+                    catch
+                    {
+                        DisplayAndLog("Appointment item processing failed or item is NULL. Continuing...");
+                    }
+
                     iCheckedItems++;
+                    if (i % 500 == 0)
+                    {
+                        // Give progress update every 500 items
+                        Console.SetCursorPosition(0, Console.CursorTop);
+                        Console.Write("");
+                        Console.WriteLine("Completed " + iCheckedItems.ToString() + " items and continuing...");
+                    }
                 }
 
                 bMore = findResults.MoreAvailable;
@@ -370,6 +398,9 @@ namespace CalVerifier
                     cView.Offset += iPageSize;
                 }
 
+                // clear out progress marker now that we are done
+                Console.SetCursorPosition(0, Console.CursorTop);
+                Console.Write(" ");
             }
 
             return true;
