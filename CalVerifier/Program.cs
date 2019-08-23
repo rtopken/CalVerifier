@@ -138,8 +138,9 @@ namespace CalVerifier
                         CreateErrFld();
                         string strFldID = fldCalVerifier.Id.ToString();
                     }
-                    bRet = ProcessCalendar(exService);
                     strSMTPAddr = strSMTP.ToUpper();
+                    bRet = ProcessCalendar(exService);
+                    
 
                     /*if (CalItems != null)
                     {
@@ -319,6 +320,7 @@ namespace CalVerifier
             {
                 // Here's where it connects to the Calendar
                 fldCal = Folder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
+               
             }
             catch (ServiceResponseException ex)
             {

@@ -137,6 +137,7 @@ namespace CalVerifier
             }
 
             string strOrganizerSMTP = "";
+            string strMbxSMTP = strSMTPAddr;
             // get the SMTP address of the Organizer by doing Resolve Name on the X500 address.
             if (!(string.IsNullOrEmpty(strOrganizerAddr)))
             {
@@ -491,7 +492,7 @@ namespace CalVerifier
                         {
                             if (!string.IsNullOrEmpty(strOrganizerAddr) && !string.IsNullOrEmpty(strOrganizerSMTP))
                             {
-                                if (!(strOrganizerSMTP.ToUpper() == strSMTPAddr)) // this user's email should match with the Organizer. If not then error.
+                                if (!(strOrganizerSMTP.ToUpper() == strMbxSMTP)) // this user's email should match with the Organizer. If not then error.
                                 {
                                     if (bOrgTest)
                                     {
@@ -525,7 +526,7 @@ namespace CalVerifier
                         {
                             if (!string.IsNullOrEmpty(strOrganizerAddr) && !string.IsNullOrEmpty(strOrganizerSMTP))
                             {
-                                if (strOrganizerSMTP.ToUpper() == strSMTPAddr) // this user's email should NOT match with the Organizer. If it does then error.
+                                if (strOrganizerSMTP.ToUpper() == strMbxSMTP) // this user's email should NOT match with the Organizer. If it does then error.
                                 {
                                     if (bOrgTest)
                                     {

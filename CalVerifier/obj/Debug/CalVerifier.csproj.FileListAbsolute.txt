@@ -20,3 +20,4 @@ C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Identi
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.xml
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.xml
 C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\bin\Debug\Microsoft.Identity.Client.xml
+C:\Users\randyto\Source\Repos\CalVerifier\CalVerifier\obj\Debug\CalVerifier.csprojAssemblyReference.cache
